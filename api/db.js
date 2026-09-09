@@ -1,0 +1,47 @@
+const BIN_ID  = "6aa01157ffd5d16053ed5ce4";
+const API_KEY = "$2a$10$BmNoiF28T1SNF7SHF6HggO1y8BVfUmb2fzB13Wm9XfSuQfvpV3.cO";
+const BIN_URL = `https://api.jsonbin.io/v3/b/${BIN_ID}`;
+
+export default async function handler(req, res) {
+  // Allow requests from your Vercel app
+  res.setHeader("Access-Control-Allow-Origin", "*");
+  res.setHeader("Access-Control-Allow-Methods", "GET, PUT, OPTIONS");
+  res.setHeader("Access-Control-Allow-Headers", "Content-Type");
+
+  // Handle preflight
+  if (req.method === "OPTIONS") {
+    return res.status(200).end();
+  }
+
+  const headers = {
+    "Content-Type": "application/json",
+    "X-Master-Key": API_KEY,
+    "X-Bin-Versioning": "false",
+  };
+
+  try {
+    if (req.method === "GET") {
+      // Load data from JSONBin
+      const response = await fetch(`${BIN_URL}/latest`, { headers });
+      const data = await response.json();
+      return res.status(200).json(data.record);
+
+    } else if (req.method === "PUT") {
+      // Save data to JSONBin
+      const body = typeof req.body === "string" ? req.body : JSON.stringify(req.body);
+      const response = await fetch(BIN_URL, {
+        method: "PUT",
+        headers,
+        body,
+      });
+      const data = await response.json();
+      return res.status(200).json({ ok: true, data });
+
+    } else {
+      return res.status(405).json({ error: "Method not allowed" });
+    }
+  } catch (err) {
+    console.error("DB proxy error:", err);
+    return res.status(500).json({ error: err.message });
+  }
+}
