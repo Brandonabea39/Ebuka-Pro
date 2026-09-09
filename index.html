@@ -1,0 +1,722 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>School Report Card System</title>
+<style>
+:root{
+  --navy:#152447;--navy-deep:#0c1730;--gold:#b08a3e;--gold-light:#e4cd94;
+  --ink:#1f2430;--ink-soft:#4b5266;--line:#d9d2bf;
+  --success:#2f7a4d;--danger:#b3432b;--danger-bg:#fbeae5;--rad:10px;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;background:#f5f3ee;color:var(--ink);font-size:14px;}
+.app{max-width:1050px;margin:0 auto;padding:18px 16px 60px;}
+
+.app-header{display:flex;align-items:center;gap:14px;padding:16px 20px;background:var(--navy);border-radius:var(--rad);color:#fff;margin-bottom:18px;}
+.crest{width:40px;height:40px;border-radius:50%;background:linear-gradient(135deg,var(--gold),var(--gold-light));display:flex;align-items:center;justify-content:center;font-weight:700;font-size:14px;color:var(--navy-deep);flex:none;}
+.app-header h1{font-size:17px;font-weight:700;color:#fff;}
+.app-header p{font-size:12px;color:#c9d2e8;margin-top:2px;}
+.db-badge{margin-left:auto;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.2);border-radius:20px;padding:4px 12px;font-size:11px;color:#e0e8ff;display:flex;align-items:center;gap:6px;white-space:nowrap;flex:none;}
+.db-dot{width:7px;height:7px;border-radius:50%;background:#facc15;flex:none;transition:.3s;}
+.db-dot.ok{background:#4ade80;}
+.db-dot.err{background:#f87171;}
+
+.tabs{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:18px;}
+.tab-btn{background:#fff;border:1.5px solid var(--line);color:var(--ink-soft);padding:9px 16px;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;transition:.15s;}
+.tab-btn:hover{border-color:var(--gold);color:var(--navy);background:#fdf9f0;}
+.tab-btn.active{background:var(--navy);border-color:var(--navy);color:#fff;}
+
+.panel{background:#fff;border:1px solid var(--line);border-radius:var(--rad);padding:20px 22px;margin-bottom:16px;display:none;}
+.panel.active{display:block;}
+.panel h2{margin-bottom:3px;font-size:16px;color:var(--navy);font-weight:700;}
+.panel .sub{color:var(--ink-soft);font-size:12.5px;margin-bottom:16px;}
+
+.form-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:12px;}
+@media(max-width:600px){.form-grid{grid-template-columns:1fr;}}
+.field{display:flex;flex-direction:column;gap:4px;}
+.field.full{grid-column:1/-1;}
+.field label{font-size:12px;font-weight:600;color:var(--ink-soft);}
+.field input,.field select{padding:8px 10px;border:1.5px solid var(--line);border-radius:7px;font-size:13px;font-family:inherit;background:#fff;color:var(--ink);}
+.field input:focus,.field select:focus{outline:none;border-color:var(--gold);box-shadow:0 0 0 3px rgba(176,138,62,.15);}
+.field .hint{font-size:11px;color:#8b8474;}
+
+.btn{border:none;border-radius:7px;padding:9px 18px;font-size:13px;font-weight:700;cursor:pointer;transition:.15s;display:inline-flex;align-items:center;gap:6px;line-height:1;}
+.btn-primary{background:var(--navy);color:#fff;border:2px solid var(--navy);}
+.btn-primary:hover{background:var(--navy-deep);border-color:var(--navy-deep);}
+.btn-gold{background:var(--gold);color:#fff;border:2px solid var(--gold);}
+.btn-gold:hover{background:#93732f;border-color:#93732f;}
+.btn-outline{background:#fff;border:2px solid #9ca3b0;color:var(--navy);font-weight:600;}
+.btn-outline:hover{border-color:var(--navy);background:#f0f3fa;}
+.btn-danger{background:var(--danger-bg);color:#8b2316;border:2px solid #e8b4aa;font-weight:600;}
+.btn-danger:hover{background:#f3d5cb;border-color:#d49080;}
+.btn:disabled{opacity:.4;cursor:not-allowed;}
+.btn-row{display:flex;gap:8px;margin-top:14px;flex-wrap:wrap;align-items:center;}
+
+table.dt{width:100%;border-collapse:collapse;margin-top:6px;font-size:13px;}
+table.dt th{text-align:left;background:#f0eee6;color:var(--navy);padding:8px 10px;font-size:11.5px;text-transform:uppercase;letter-spacing:.4px;border-bottom:2px solid var(--line);font-weight:700;}
+table.dt td{padding:8px 10px;border-bottom:1px solid var(--line);vertical-align:middle;color:var(--ink);}
+table.dt tr:last-child td{border-bottom:none;}
+.ra{display:flex;gap:6px;}
+.ra button{padding:5px 10px;font-size:12px;}
+
+.empty{padding:24px 10px;text-align:center;color:var(--ink-soft);font-size:13px;}
+.empty b{display:block;color:var(--navy);font-size:14px;margin-bottom:4px;}
+
+.chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px;}
+.chip{border:2px solid #c4bfb0;border-radius:20px;padding:7px 14px;font-size:13px;cursor:pointer;user-select:none;background:#f8f5ef;color:var(--navy);font-weight:600;transition:.15s;}
+.chip:hover{border-color:var(--gold);background:#fdf5e0;}
+.chip.selected{background:var(--gold);border-color:#8a6a28;color:#fff;}
+
+.overlay{position:fixed;inset:0;background:rgba(12,23,48,.55);display:none;align-items:center;justify-content:center;z-index:1000;padding:20px;}
+.overlay.show{display:flex;}
+.mbox{background:#fff;border-radius:12px;padding:24px;max-width:420px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,.25);}
+.mbox.wide{max-width:480px;}
+.mbox h3{margin-bottom:12px;color:var(--navy);font-size:16px;font-weight:700;}
+.success-icon{width:50px;height:50px;border-radius:50%;background:#e5f3ea;color:var(--success);display:flex;align-items:center;justify-content:center;margin:0 auto 12px;font-size:26px;}
+
+.stepper{display:flex;flex-wrap:wrap;gap:7px;margin-bottom:10px;}
+.pill{font-size:11px;font-weight:700;padding:4px 10px;border-radius:20px;background:#ede9df;color:#7a6e58;border:1px solid #cfc8b6;}
+.pill.done{background:var(--navy);color:#fff;border-color:var(--navy);}
+
+.grade-sel{width:75px;padding:6px 8px;border:1.5px solid var(--line);border-radius:6px;font-size:13px;color:var(--ink);background:#fff;}
+.toast{font-size:12px;color:var(--success);font-weight:700;}
+.wrap-row{display:flex;flex-direction:column;gap:10px;margin-top:10px;}
+.wrap-row .field{max-width:380px;}
+
+/* Loading screen */
+.loading-screen{position:fixed;inset:0;background:var(--navy);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:9999;color:#fff;gap:14px;}
+.loading-screen .spinner{width:36px;height:36px;border:3px solid rgba(255,255,255,.2);border-top-color:#fff;border-radius:50%;animation:spin .8s linear infinite;}
+@keyframes spin{to{transform:rotate(360deg);}}
+.loading-screen p{font-size:14px;color:#c9d2e8;}
+.loading-screen.hidden{display:none;}
+
+#reportPreviewWrap{margin-top:20px;display:none;}
+#reportPreviewWrap h3{font-size:12px;color:var(--ink-soft);margin-bottom:8px;text-transform:uppercase;letter-spacing:.5px;}
+.report-shell{background:#ccc;padding:18px;border-radius:8px;overflow:auto;}
+.report-card{width:720px;margin:0 auto;background:#fff;color:#111;font-family:Georgia,'Times New Roman',serif;padding:30px 36px 24px;border:2px solid #16204a;overflow:hidden;position:relative;}
+.rc-content{position:relative;z-index:2;}
+.rc-header{display:flex;justify-content:space-between;gap:12px;}
+.rc-col{width:46%;text-align:center;font-size:10.5px;line-height:1.35;}
+.rc-logo-placeholder{width:52px;height:52px;border-radius:50%;margin:0 auto 3px;border:1px dashed #999;display:flex;align-items:center;justify-content:center;font-size:9px;color:#999;}
+.rc-logo{width:52px;height:52px;border-radius:50%;object-fit:cover;margin:0 auto 3px;display:block;}
+.rc-school-name{font-weight:700;font-size:12px;text-transform:uppercase;}
+.rc-motto{font-style:italic;font-size:10px;margin-top:1px;}
+.rc-title-block{text-align:center;margin-top:12px;}
+.rc-title-block .l1{font-weight:700;font-size:12px;text-transform:uppercase;}
+.rc-title-block .l2{font-size:11.5px;margin-top:2px;text-transform:uppercase;}
+.rc-title-block .l3{font-weight:700;font-size:13px;text-decoration:underline;margin-top:4px;text-transform:uppercase;}
+.rc-idrow{display:flex;justify-content:space-between;align-items:center;margin-top:14px;font-size:11px;font-weight:700;}
+.rc-barcode{height:18px;width:140px;background-image:repeating-linear-gradient(90deg,#111 0 2px,transparent 2px 4px,#111 4px 5px,transparent 5px 8px);}
+.rc-centerrow{margin-top:9px;font-size:11px;font-weight:700;text-align:center;}
+.rc-sectionrow{margin-top:5px;font-size:11px;font-weight:700;text-align:center;}
+.rc-candidate{margin-top:10px;font-size:12px;font-weight:700;text-align:center;}
+.rc-counts{display:flex;justify-content:space-between;margin-top:9px;font-size:11px;font-weight:700;}
+table.rc-table{width:100%;border-collapse:collapse;margin-top:12px;font-size:11px;}
+table.rc-table th,table.rc-table td{border:1px solid #16204a;padding:5px 7px;}
+table.rc-table th{background:#eef0f7;text-align:left;text-transform:uppercase;font-size:10px;}
+table.rc-table td.c,table.rc-table th.c{text-align:center;}
+.rc-legend{margin-top:10px;font-size:10px;text-align:center;font-weight:600;}
+.rc-disclaimer{margin-top:16px;text-align:center;font-size:10px;line-height:1.7;}
+.rc-footerschool{margin-top:8px;text-align:center;font-weight:700;font-size:10px;text-transform:uppercase;}
+.rc-sigrow{display:flex;justify-content:space-between;margin-top:20px;font-size:10.5px;font-weight:700;}
+.rc-copyright{margin-top:5px;text-align:center;font-size:9px;color:#555;}
+.rc-parentsig{margin-top:22px;font-size:10.5px;font-weight:700;text-align:center;}
+.rc-sigline{width:240px;border-bottom:1px solid #111;margin:18px auto 0;}
+</style>
+</head>
+<body>
+
+<!-- Loading screen -->
+<div class="loading-screen" id="loadingScreen">
+  <div class="spinner"></div>
+  <p>Loading data from database…</p>
+</div>
+
+<div class="app">
+  <div class="app-header">
+    <div class="crest">RC</div>
+    <div>
+      <h1>School Report Card System</h1>
+      <p>Manage students, subjects, registrations — generate official result slips as PDF.</p>
+    </div>
+    <div class="db-badge"><span class="db-dot" id="dbDot"></span><span id="dbStatus">Connecting…</span></div>
+  </div>
+
+  <div class="tabs">
+    <button class="tab-btn active" data-tab="settings">School Setup</button>
+    <button class="tab-btn" data-tab="students">Students</button>
+    <button class="tab-btn" data-tab="subjects">Subjects</button>
+    <button class="tab-btn" data-tab="registration">Registration</button>
+    <button class="tab-btn" data-tab="generate">Generate Report Card</button>
+  </div>
+
+  <div class="panel active" id="panel-settings">
+    <h2>School Setup</h2>
+    <p class="sub">This information appears on every report card. Changes are saved to the shared online database instantly.</p>
+    <div class="form-grid">
+      <div class="field full"><label>School Logo</label><input type="file" id="logoInput" accept="image/*"><span class="hint">Shown on both sides of the bilingual header.</span></div>
+      <div class="field"><label>School Name</label><input id="s_schoolName" placeholder="e.g. GREENFIELD BILINGUAL SECONDARY SCHOOL"></div>
+      <div class="field"><label>Exam Board Abbreviation</label><input id="s_boardAbbrev" placeholder="e.g. G.E.B"></div>
+      <div class="field"><label>Motto (English)</label><input id="s_mottoEn" placeholder="e.g. Dedicated to excellence"></div>
+      <div class="field"><label>Motto (French)</label><input id="s_mottoFr" placeholder="e.g. Consacré à l'excellence"></div>
+      <div class="field"><label>P.O. Box / B.P.</label><input id="s_poBox" placeholder="e.g. 245 Yaoundé"></div>
+      <div class="field"><label>Contact Phone(s)</label><input id="s_phone" placeholder="e.g. (+237) 6XX XXX XXX"></div>
+      <div class="field"><label>Email</label><input id="s_email" placeholder="e.g. school@example.com"></div>
+      <div class="field"><label>Exam Center Number</label><input id="s_centerNo" placeholder="e.g. 12045"></div>
+      <div class="field full"><label>Exam Center Name</label><input id="s_centerName" placeholder="e.g. GREENFIELD BILINGUAL SECONDARY SCHOOL"></div>
+    </div>
+    <div class="btn-row">
+      <button class="btn btn-primary" id="saveSettingsBtn">Save school info</button>
+      <span class="toast" id="settingsToast"></span>
+    </div>
+  </div>
+
+  <div class="panel" id="panel-students">
+    <h2>Students</h2>
+    <p class="sub">Register each student's core identity and family contact details.</p>
+    <button class="btn btn-gold" id="addStudentBtn">+ Add student</button>
+    <div id="studentsTableWrap" style="margin-top:14px;"></div>
+  </div>
+
+  <div class="panel" id="panel-subjects">
+    <h2>Subjects</h2>
+    <p class="sub">Define subject codes and titles that students can be registered for.</p>
+    <button class="btn btn-gold" id="addSubjectBtn">+ Add subject</button>
+    <div id="subjectsTableWrap" style="margin-top:14px;"></div>
+  </div>
+
+  <div class="panel" id="panel-registration">
+    <h2>Subject Registration</h2>
+    <p class="sub">Pick a student, then tap each subject they're registered to sit. Selected subjects show in gold.</p>
+    <div class="field" style="max-width:360px;margin-bottom:4px;">
+      <label>Student</label>
+      <select id="regStudentSelect"><option value="">— Select a student —</option></select>
+    </div>
+    <div id="regSubjectsWrap"></div>
+    <div class="btn-row" id="regSaveRow" style="display:none;">
+      <button class="btn btn-primary" id="saveRegistrationBtn">Save registration</button>
+      <span class="toast" id="regToast"></span>
+    </div>
+  </div>
+
+  <div class="panel" id="panel-generate">
+    <h2>Generate Report Card</h2>
+    <p class="sub">Follow the steps below, then click Generate to download the result slip as a PDF.</p>
+    <div class="stepper">
+      <span class="pill" id="pill-1">1. Section</span>
+      <span class="pill" id="pill-2">2. Exam type</span>
+      <span class="pill" id="pill-3">3. Sub-section</span>
+      <span class="pill" id="pill-4">4. Student</span>
+      <span class="pill" id="pill-5">5. Grades &amp; generate</span>
+    </div>
+    <div class="wrap-row">
+      <div class="field"><label>Exam Section</label>
+        <select id="g_section">
+          <option value="">— Select section —</option>
+          <option>ANGLOPHONE SECTION</option>
+          <option>FRANCOPHONE SECTION</option>
+        </select>
+      </div>
+      <div class="field" id="wrap_examType" style="display:none;"><label>Exam Type</label><select id="g_examType"><option value="">— Select —</option></select></div>
+      <div class="field" id="wrap_subExam" style="display:none;"><label>Sub-Section</label><select id="g_subExam"><option value="">— Select —</option></select></div>
+      <div style="display:flex;gap:12px;flex-wrap:wrap;">
+        <div class="field" id="wrap_student" style="display:none;"><label>Student</label><select id="g_student"><option value="">— Select student —</option></select></div>
+        <div class="field" id="wrap_month" style="display:none;"><label>Month</label>
+          <select id="g_month">
+            <option>January</option><option>February</option><option>March</option><option>April</option>
+            <option>May</option><option>June</option><option>July</option><option>August</option>
+            <option>September</option><option>October</option><option selected>November</option><option>December</option>
+          </select>
+        </div>
+        <div class="field" id="wrap_year" style="display:none;"><label>Year</label>
+          <select id="g_year"><option>2024</option><option>2025</option><option selected>2026</option><option>2027</option></select>
+        </div>
+      </div>
+      <div id="wrap_grades" style="display:none;">
+        <div id="gradesTableWrap"></div>
+        <div class="btn-row">
+          <button class="btn btn-gold" id="generateBtn" disabled>Generate &amp; Download PDF</button>
+        </div>
+      </div>
+    </div>
+    <div id="reportPreviewWrap">
+      <h3>Preview</h3>
+      <div class="report-shell"><div class="report-card" id="reportCard"></div></div>
+    </div>
+  </div>
+</div>
+
+<!-- Modals -->
+<div class="overlay" id="studentOverlay">
+  <div class="mbox wide">
+    <h3 id="studentModalTitle">Add student</h3>
+    <div class="form-grid">
+      <div class="field full"><label>Full Name</label><input id="f_name" placeholder="e.g. ATANGA NOELLA PETRA"></div>
+      <div class="field"><label>CGMN</label><input id="f_cgmn" placeholder="e.g. 242467242"></div>
+      <div class="field"><label>CIN</label><input id="f_cin" placeholder="e.g. 120225004"></div>
+      <div class="field"><label>Date of Birth</label><input id="f_dob" placeholder="e.g. 12/03/2008"></div>
+      <div class="field"><label>Place of Birth</label><input id="f_pob" placeholder="e.g. Yaoundé"></div>
+      <div class="field"><label>Father's Name</label><input id="f_fatherName" placeholder="Full name"></div>
+      <div class="field"><label>Father's Phone</label><input id="f_fatherPhone" placeholder="(+237) 6XX XXX XXX"></div>
+      <div class="field"><label>Mother's Name</label><input id="f_motherName" placeholder="Full name"></div>
+      <div class="field"><label>Mother's Phone</label><input id="f_motherPhone" placeholder="(+237) 6XX XXX XXX"></div>
+    </div>
+    <div class="btn-row">
+      <button class="btn btn-primary" id="studentSaveBtn">Save student</button>
+      <button class="btn btn-outline" id="studentCancelBtn">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<div class="overlay" id="subjectOverlay">
+  <div class="mbox">
+    <h3 id="subjectModalTitle">Add subject</h3>
+    <div class="form-grid">
+      <div class="field"><label>Subject Code</label><input id="f_subCode" placeholder="e.g. 0535"></div>
+      <div class="field"><label>Subject Title</label><input id="f_subTitle" placeholder="e.g. ENGLISH LANGUAGE"></div>
+    </div>
+    <div class="btn-row">
+      <button class="btn btn-primary" id="subjectSaveBtn">Save subject</button>
+      <button class="btn btn-outline" id="subjectCancelBtn">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<div class="overlay" id="successOverlay">
+  <div class="mbox" style="text-align:center;">
+    <div class="success-icon">✓</div>
+    <h3 style="text-align:center;">Report card generated!</h3>
+    <p style="color:var(--ink-soft);font-size:13px;margin:6px 0 16px;">The PDF has been downloaded to your device.</p>
+    <button class="btn btn-primary" id="successOkBtn">Done</button>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script>
+(function(){
+"use strict";
+
+// ─── JSONBin config ───────────────────────────────────────────────
+const BIN_ID  = "6aa01157ffd5d16053ed5ce4";
+const API_KEY = "$2a$10$BmNoiF28T1SNF7SHF6HggO1y8BVfUmb2fzB13Wm9XfSuQfvpV3.cO";
+const BIN_URL = `https://api.jsonbin.io/v3/b/${BIN_ID}`;
+const HEADERS = {
+  "Content-Type": "application/json",
+  "X-Master-Key": API_KEY,
+  "X-Bin-Versioning": "false"   // always overwrite, don't stack versions
+};
+
+// ─── State ────────────────────────────────────────────────────────
+const DEFAULT_STATE = {
+  settings:{
+    schoolName:"KAMGAI INTERNATIONAL BILINGUAL SECONDARY SCHOOL",
+    mottoEn:"Dedicated to excellence",
+    mottoFr:"Consacré à l'excellence",
+    poBox:"6204 Yaoundé",
+    phone:"(+237) 694 922 392 / 678 882 661",
+    email:"kamgai.international.complex@gmail.com",
+    logo:"",centerNo:"",
+    centerName:"KAMGAI INTERNATIONAL BILINGUAL SECONDARY SCHOOL",
+    boardAbbrev:"K.E.B"
+  },
+  students:[],subjects:[],registrations:{}
+};
+let state = JSON.parse(JSON.stringify(DEFAULT_STATE));
+let saveTimer = null;
+
+// ─── DB helpers ───────────────────────────────────────────────────
+function setStatus(msg, state){
+  document.getElementById("dbStatus").textContent = msg;
+  const dot = document.getElementById("dbDot");
+  dot.className = "db-dot" + (state==="ok"?" ok": state==="err"?" err":"");
+}
+
+async function loadFromDB(){
+  try {
+    const res = await fetch(BIN_URL+"/latest", { headers:{ "X-Master-Key": API_KEY } });
+    if(!res.ok) throw new Error(res.status);
+    const json = await res.json();
+    const remote = json.record;
+    // Merge to ensure new keys from DEFAULT_STATE are always present
+    state = Object.assign(JSON.parse(JSON.stringify(DEFAULT_STATE)), remote);
+    setStatus("Synced", "ok");
+  } catch(e) {
+    setStatus("DB error — check console", "err");
+    console.error("JSONBin load error:", e);
+  }
+}
+
+async function saveToDB(){
+  setStatus("Saving…", "");
+  try {
+    const res = await fetch(BIN_URL, {
+      method: "PUT",
+      headers: HEADERS,
+      body: JSON.stringify(state)
+    });
+    if(!res.ok) throw new Error(res.status);
+    setStatus("Saved ✓", "ok");
+    setTimeout(()=>setStatus("Synced","ok"), 1500);
+  } catch(e) {
+    setStatus("Save failed!", "err");
+    console.error("JSONBin save error:", e);
+  }
+}
+
+// Debounce saves so rapid changes don't hammer the API
+function scheduleSave(){
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(saveToDB, 600);
+}
+
+// ─── Utilities ────────────────────────────────────────────────────
+const EXAM_TYPES = {
+  "ANGLOPHONE SECTION":["GCE ORDINARY PRE-MOCK","GCE ADVANCED LEVEL PRE-MOCK"],
+  "FRANCOPHONE SECTION":["PROBATOIRE BLANC (PRE-MOCK)","BACCALAUREAT BLANC (PRE-MOCK)"]
+};
+const SUB_EXAM = {
+  "ANGLOPHONE SECTION":["ANGLOPHONE GENERAL","ANGLOPHONE TECHNICAL"],
+  "FRANCOPHONE SECTION":["SERIE GENERALE","SERIE TECHNIQUE"]
+};
+const GRADES = ["A","B","C","D","U","AB"];
+
+function uid(p){return p+"_"+Date.now().toString(36)+Math.random().toString(36).slice(2,6);}
+function esc(s){if(!s&&s!==0)return"";return String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));}
+function remark(g){if("ABC".includes(g))return"PASSED";if("DU".includes(g))return"FAILED";if(g==="AB")return"ABSENT";return"";}
+
+// ─── Tabs ─────────────────────────────────────────────────────────
+document.querySelectorAll(".tab-btn").forEach(b=>{
+  b.addEventListener("click",()=>{
+    document.querySelectorAll(".tab-btn").forEach(x=>x.classList.remove("active"));
+    document.querySelectorAll(".panel").forEach(x=>x.classList.remove("active"));
+    b.classList.add("active");
+    document.getElementById("panel-"+b.dataset.tab).classList.add("active");
+    if(b.dataset.tab==="registration") renderRegStudentSel();
+    if(b.dataset.tab==="generate") renderGenStudentOpts();
+  });
+});
+
+// ─── Settings ─────────────────────────────────────────────────────
+function fillSettings(){
+  const s = state.settings;
+  ["schoolName","boardAbbrev","mottoEn","mottoFr","poBox","phone","email","centerNo","centerName"]
+    .forEach(k=>{ const el=document.getElementById("s_"+k); if(el) el.value=s[k]||""; });
+}
+document.getElementById("logoInput").addEventListener("change",e=>{
+  const f=e.target.files[0]; if(!f) return;
+  const r=new FileReader();
+  r.onload=()=>{ state.settings.logo=r.result; };
+  r.readAsDataURL(f);
+});
+document.getElementById("saveSettingsBtn").addEventListener("click",async()=>{
+  ["schoolName","boardAbbrev","mottoEn","mottoFr","poBox","phone","email","centerNo","centerName"]
+    .forEach(k=>state.settings[k]=document.getElementById("s_"+k).value.trim());
+  await saveToDB();
+  const t=document.getElementById("settingsToast");
+  t.textContent="Saved to database."; setTimeout(()=>t.textContent="",2500);
+});
+
+// ─── Students ─────────────────────────────────────────────────────
+let editStudId=null;
+function renderStudents(){
+  const w=document.getElementById("studentsTableWrap");
+  if(!state.students.length){
+    w.innerHTML='<div class="empty"><b>No students yet</b>Click "Add student" to register your first student.</div>';return;
+  }
+  let h='<table class="dt"><thead><tr><th>Name</th><th>CGMN</th><th>CIN</th><th>DOB</th><th>Actions</th></tr></thead><tbody>';
+  state.students.forEach(s=>{
+    h+=`<tr><td>${esc(s.name)}</td><td>${esc(s.cgmn)}</td><td>${esc(s.cin)}</td><td>${esc(s.dob)}</td>
+    <td class="ra">
+      <button class="btn btn-outline" onclick="editStud('${s.id}')">Edit</button>
+      <button class="btn btn-danger" onclick="delStud('${s.id}')">Delete</button>
+    </td></tr>`;
+  });
+  h+="</tbody></table>"; w.innerHTML=h;
+}
+window.editStud = id=>openStudModal(id);
+window.delStud  = async id=>{
+  if(!confirm("Delete this student? Their subject registrations will also be removed.")) return;
+  state.students=state.students.filter(s=>s.id!==id);
+  delete state.registrations[id];
+  renderStudents(); scheduleSave();
+};
+function openStudModal(id){
+  editStudId=id||null;
+  document.getElementById("studentModalTitle").textContent=id?"Edit student":"Add student";
+  const flds=["name","cgmn","cin","dob","pob","fatherName","fatherPhone","motherName","motherPhone"];
+  if(id){ const s=state.students.find(x=>x.id===id); flds.forEach(f=>document.getElementById("f_"+f).value=s[f]||""); }
+  else   { flds.forEach(f=>document.getElementById("f_"+f).value=""); }
+  document.getElementById("studentOverlay").classList.add("show");
+}
+document.getElementById("addStudentBtn").addEventListener("click",()=>openStudModal(null));
+document.getElementById("studentCancelBtn").addEventListener("click",()=>document.getElementById("studentOverlay").classList.remove("show"));
+document.getElementById("studentSaveBtn").addEventListener("click",async()=>{
+  const name=document.getElementById("f_name").value.trim();
+  if(!name){alert("Please enter the student's full name.");return;}
+  const data={
+    name, cgmn:document.getElementById("f_cgmn").value.trim(),
+    cin:document.getElementById("f_cin").value.trim(),
+    dob:document.getElementById("f_dob").value.trim(),
+    pob:document.getElementById("f_pob").value.trim(),
+    fatherName:document.getElementById("f_fatherName").value.trim(),
+    fatherPhone:document.getElementById("f_fatherPhone").value.trim(),
+    motherName:document.getElementById("f_motherName").value.trim(),
+    motherPhone:document.getElementById("f_motherPhone").value.trim()
+  };
+  if(editStudId){ const i=state.students.findIndex(s=>s.id===editStudId); state.students[i]=Object.assign({id:editStudId},data); }
+  else           { state.students.push(Object.assign({id:uid("stu")},data)); }
+  document.getElementById("studentOverlay").classList.remove("show");
+  renderStudents(); scheduleSave();
+});
+
+// ─── Subjects ─────────────────────────────────────────────────────
+let editSubId=null;
+function renderSubjects(){
+  const w=document.getElementById("subjectsTableWrap");
+  if(!state.subjects.length){
+    w.innerHTML='<div class="empty"><b>No subjects yet</b>Click "Add subject" to create your first subject.</div>';return;
+  }
+  let h='<table class="dt"><thead><tr><th>Code</th><th>Title</th><th>Actions</th></tr></thead><tbody>';
+  state.subjects.forEach(s=>{
+    h+=`<tr><td>${esc(s.code)}</td><td>${esc(s.title)}</td>
+    <td class="ra">
+      <button class="btn btn-outline" onclick="editSub('${s.id}')">Edit</button>
+      <button class="btn btn-danger" onclick="delSub('${s.id}')">Delete</button>
+    </td></tr>`;
+  });
+  h+="</tbody></table>"; w.innerHTML=h;
+}
+window.editSub = id=>openSubModal(id);
+window.delSub  = async id=>{
+  if(!confirm("Delete this subject? It will be removed from all student registrations.")) return;
+  state.subjects=state.subjects.filter(s=>s.id!==id);
+  Object.keys(state.registrations).forEach(sid=>{
+    state.registrations[sid]=state.registrations[sid].filter(x=>x!==id);
+  });
+  renderSubjects(); scheduleSave();
+};
+function openSubModal(id){
+  editSubId=id||null;
+  document.getElementById("subjectModalTitle").textContent=id?"Edit subject":"Add subject";
+  if(id){ const s=state.subjects.find(x=>x.id===id); document.getElementById("f_subCode").value=s.code; document.getElementById("f_subTitle").value=s.title; }
+  else   { document.getElementById("f_subCode").value=""; document.getElementById("f_subTitle").value=""; }
+  document.getElementById("subjectOverlay").classList.add("show");
+}
+document.getElementById("addSubjectBtn").addEventListener("click",()=>openSubModal(null));
+document.getElementById("subjectCancelBtn").addEventListener("click",()=>document.getElementById("subjectOverlay").classList.remove("show"));
+document.getElementById("subjectSaveBtn").addEventListener("click",async()=>{
+  const code=document.getElementById("f_subCode").value.trim();
+  const title=document.getElementById("f_subTitle").value.trim();
+  if(!code||!title){alert("Please enter both a subject code and title.");return;}
+  if(editSubId){ const i=state.subjects.findIndex(s=>s.id===editSubId); state.subjects[i]={id:editSubId,code,title}; }
+  else          { state.subjects.push({id:uid("sub"),code,title}); }
+  document.getElementById("subjectOverlay").classList.remove("show");
+  renderSubjects(); scheduleSave();
+});
+
+// ─── Registration ─────────────────────────────────────────────────
+function renderRegStudentSel(){
+  const sel=document.getElementById("regStudentSelect");
+  sel.innerHTML='<option value="">— Select a student —</option>'+
+    state.students.map(s=>`<option value="${s.id}">${esc(s.name)}</option>`).join("");
+}
+document.getElementById("regStudentSelect").addEventListener("change",renderRegSubjects);
+function renderRegSubjects(){
+  const stuId=document.getElementById("regStudentSelect").value;
+  const wrap=document.getElementById("regSubjectsWrap");
+  const row=document.getElementById("regSaveRow");
+  if(!stuId){wrap.innerHTML="";row.style.display="none";return;}
+  if(!state.subjects.length){
+    wrap.innerHTML='<div class="empty"><b>No subjects yet</b>Add subjects first in the Subjects tab.</div>';
+    row.style.display="none";return;
+  }
+  const reg=state.registrations[stuId]||[];
+  wrap.innerHTML='<div class="chips">'+
+    state.subjects.map(s=>`<span class="chip${reg.includes(s.id)?" selected":""}" data-cid="${s.id}">${esc(s.code)} — ${esc(s.title)}</span>`).join("")+
+    '</div>';
+  wrap.querySelectorAll("[data-cid]").forEach(c=>c.addEventListener("click",()=>c.classList.toggle("selected")));
+  row.style.display="flex";
+}
+document.getElementById("saveRegistrationBtn").addEventListener("click",async()=>{
+  const stuId=document.getElementById("regStudentSelect").value; if(!stuId) return;
+  state.registrations[stuId]=Array.from(document.querySelectorAll("[data-cid].selected")).map(e=>e.dataset.cid);
+  const t=document.getElementById("regToast");
+  t.textContent="Registration saved."; setTimeout(()=>t.textContent="",2000);
+  scheduleSave();
+});
+
+// ─── Generate ─────────────────────────────────────────────────────
+const gSection=document.getElementById("g_section");
+const gExamType=document.getElementById("g_examType");
+const gSubExam=document.getElementById("g_subExam");
+const gStudent=document.getElementById("g_student");
+function pill(n,on){document.getElementById("pill-"+n).classList.toggle("done",!!on);}
+
+gSection.addEventListener("change",()=>{
+  const v=gSection.value; pill(1,!!v);
+  ["wrap_examType","wrap_subExam","wrap_student","wrap_month","wrap_year","wrap_grades"]
+    .forEach(id=>document.getElementById(id).style.display="none");
+  document.getElementById("reportPreviewWrap").style.display="none";
+  [2,3,4,5].forEach(n=>pill(n,false));
+  if(!v) return;
+  gExamType.innerHTML='<option value="">— Select —</option>'+EXAM_TYPES[v].map(t=>`<option>${t}</option>`).join("");
+  document.getElementById("wrap_examType").style.display="flex";
+});
+gExamType.addEventListener("change",()=>{
+  const v=gExamType.value; pill(2,!!v);
+  ["wrap_subExam","wrap_student","wrap_month","wrap_year","wrap_grades"]
+    .forEach(id=>document.getElementById(id).style.display="none");
+  document.getElementById("reportPreviewWrap").style.display="none";
+  [3,4,5].forEach(n=>pill(n,false));
+  if(!v) return;
+  gSubExam.innerHTML='<option value="">— Select —</option>'+SUB_EXAM[gSection.value].map(t=>`<option>${t}</option>`).join("");
+  document.getElementById("wrap_subExam").style.display="flex";
+});
+gSubExam.addEventListener("change",()=>{
+  const v=gSubExam.value; pill(3,!!v);
+  ["wrap_student","wrap_month","wrap_year","wrap_grades"]
+    .forEach(id=>document.getElementById(id).style.display="none");
+  document.getElementById("reportPreviewWrap").style.display="none";
+  [4,5].forEach(n=>pill(n,false));
+  if(!v) return;
+  renderGenStudentOpts();
+  ["wrap_student","wrap_month","wrap_year"].forEach(id=>document.getElementById(id).style.display="flex");
+});
+function renderGenStudentOpts(){
+  gStudent.innerHTML='<option value="">— Select student —</option>'+
+    state.students.map(s=>`<option value="${s.id}">${esc(s.name)}</option>`).join("");
+}
+gStudent.addEventListener("change",()=>{
+  const v=gStudent.value; pill(4,!!v);
+  document.getElementById("wrap_grades").style.display="none";
+  document.getElementById("reportPreviewWrap").style.display="none";
+  pill(5,false);
+  if(!v) return;
+  renderGradesTable(v);
+  document.getElementById("wrap_grades").style.display="block";
+});
+function renderGradesTable(stuId){
+  const wrap=document.getElementById("gradesTableWrap");
+  const subs=state.registrations[stuId]||[];
+  if(!subs.length){
+    wrap.innerHTML='<div class="empty"><b>No subjects registered</b>Register this student for subjects in the Registration tab first.</div>';
+    document.getElementById("generateBtn").disabled=true; return;
+  }
+  document.getElementById("generateBtn").disabled=false;
+  let h='<table class="dt"><thead><tr><th>Code</th><th>Subject</th><th>Grade</th></tr></thead><tbody>';
+  subs.forEach(sid=>{
+    const s=state.subjects.find(x=>x.id===sid); if(!s) return;
+    h+=`<tr><td>${esc(s.code)}</td><td>${esc(s.title)}</td>
+    <td><select class="grade-sel" data-gfor="${sid}"><option value="">--</option>${GRADES.map(g=>`<option>${g}</option>`).join("")}</select></td></tr>`;
+  });
+  h+="</tbody></table>"; wrap.innerHTML=h;
+  wrap.querySelectorAll("[data-gfor]").forEach(s=>s.addEventListener("change",checkGrades));
+  checkGrades();
+}
+function checkGrades(){
+  const sels=document.querySelectorAll("[data-gfor]");
+  document.getElementById("generateBtn").disabled=
+    sels.length===0 || !Array.from(sels).every(s=>s.value!=="");
+}
+
+function buildRC(){
+  const s=state.settings;
+  const stuId=gStudent.value;
+  const stu=state.students.find(x=>x.id===stuId);
+  const subIds=state.registrations[stuId]||[];
+  const month=document.getElementById("g_month").value;
+  const year=document.getElementById("g_year").value;
+  const examType=gExamType.value;
+  const subExam=gSubExam.value;
+  const rows=subIds.map(sid=>{
+    const sub=state.subjects.find(x=>x.id===sid);
+    const g=(document.querySelector(`[data-gfor="${sid}"]`)||{}).value||"";
+    return{code:sub?sub.code:"",title:sub?sub.title:"",grade:g,remark:remark(g)};
+  }).filter(r=>r.code);
+  const passed=rows.filter(r=>r.remark==="PASSED").length;
+  const logoHtml=s.logo?`<img class="rc-logo" src="${s.logo}">`:'<div class="rc-logo-placeholder">LOGO</div>';
+  const sn=s.schoolName||"YOUR SCHOOL NAME";
+  const ba=s.boardAbbrev||"E.B";
+  return `<div class="rc-content">
+<div class="rc-header">
+  <div class="rc-col">${logoHtml}<div class="rc-school-name">${esc(sn)}</div>
+    <div class="rc-motto">${esc(s.mottoFr||"")}</div>
+    <div>B.P : ${esc(s.poBox||"")}</div><div>CONTACT : ${esc(s.phone||"")}</div><div>E-mail : ${esc(s.email||"")}</div></div>
+  <div class="rc-col">${logoHtml}<div class="rc-school-name">${esc(sn)}</div>
+    <div class="rc-motto">${esc(s.mottoEn||"")}</div>
+    <div>P.O.BOX : ${esc(s.poBox||"")}</div><div>CONTACT : ${esc(s.phone||"")}</div><div>E-mail : ${esc(s.email||"")}</div></div>
+</div>
+<div class="rc-title-block">
+  <div class="l1">${esc(sn)} MOCK EXAMINATIONS.</div>
+  <div class="l2">${esc(examType)}, ${esc(month)} ${esc(year)} SESSION.</div>
+  <div class="l3">Result Slip</div>
+</div>
+<div class="rc-idrow"><span>CIN: ${esc(stu.cin)}</span><span class="rc-barcode"></span><span>CGMN: ${esc(stu.cgmn)}</span></div>
+<div class="rc-centerrow">CENTER No: ${esc(s.centerNo||"")} &nbsp;&nbsp; CENTER NAME: ${esc(s.centerName||sn)}</div>
+<div class="rc-sectionrow">SECTION: ${esc(subExam)}</div>
+<div class="rc-candidate">CANDIDATE NAME: ${esc(stu.name.toUpperCase())}</div>
+<div class="rc-counts"><span>NUMBER OF SUBJECTS REGISTERED: ${rows.length}</span><span>NUMBER OF SUBJECTS PASSED: ${passed}</span></div>
+<table class="rc-table">
+  <thead><tr><th class="c">Code</th><th>Subject Name</th><th class="c">Grade</th><th class="c">Remarks</th></tr></thead>
+  <tbody>${rows.map(r=>`<tr><td class="c">${esc(r.code)}</td><td>${esc(r.title)}</td><td class="c">${esc(r.grade)}</td><td class="c">${esc(r.remark)}</td></tr>`).join("")}</tbody>
+</table>
+<div class="rc-legend">GRADING FORMAT: &nbsp; A : 76–100 &nbsp; B : 60–75 &nbsp; C : 50–59 &nbsp; D : 35–49 &nbsp; U : &lt; 35 &nbsp; AB : ABSENT</div>
+<div class="rc-disclaimer"><div>THIS IS A RESULT SLIP AND NOT A CERTIFICATE.</div><div>NO ALTERATIONS SHOULD BE MADE ON THIS SLIP.</div></div>
+<div class="rc-footerschool">${esc(sn)}</div>
+<div class="rc-sigrow"><span>THE PRINCIPAL.</span><span>${esc(ba)}</span></div>
+<div class="rc-copyright">&copy; ${esc(ba)} EXAMINATION BOARD ${esc(year)}</div>
+<div class="rc-parentsig">PARENT NAME AND SIGNATURE:<div class="rc-sigline"></div></div>
+</div>`;
+}
+
+document.getElementById("generateBtn").addEventListener("click",async()=>{
+  const stuId=gStudent.value;
+  const stu=state.students.find(x=>x.id===stuId); if(!stu) return;
+  const rc=document.getElementById("reportCard");
+  rc.innerHTML=buildRC();
+  document.getElementById("reportPreviewWrap").style.display="block";
+  pill(5,true);
+  const btn=document.getElementById("generateBtn");
+  btn.disabled=true; btn.textContent="Generating…";
+  try {
+    const canvas=await html2canvas(rc,{scale:2,useCORS:true,backgroundColor:"#ffffff"});
+    const imgData=canvas.toDataURL("image/png");
+    const{jsPDF}=window.jspdf;
+    const pdf=new jsPDF("p","pt","a4");
+    const pw=pdf.internal.pageSize.getWidth(), ph=pdf.internal.pageSize.getHeight();
+    const ih=(canvas.height*pw)/canvas.width;
+    pdf.addImage(imgData,"PNG",0,0,pw,Math.min(ih,ph));
+    pdf.save(stu.name.replace(/[^a-z0-9]+/gi,"_")+"_ReportCard.pdf");
+    document.getElementById("successOverlay").classList.add("show");
+  } catch(e) {
+    console.error(e); alert("Something went wrong generating the PDF. Please try again.");
+  } finally {
+    btn.disabled=false; btn.textContent="Generate & Download PDF"; checkGrades();
+  }
+});
+document.getElementById("successOkBtn").addEventListener("click",()=>document.getElementById("successOverlay").classList.remove("show"));
+
+["studentOverlay","subjectOverlay"].forEach(id=>{
+  document.getElementById(id).addEventListener("click",e=>{
+    if(e.target.id===id) document.getElementById(id).classList.remove("show");
+  });
+});
+
+// ─── Init ─────────────────────────────────────────────────────────
+(async function init(){
+  await loadFromDB();
+  document.getElementById("loadingScreen").classList.add("hidden");
+  fillSettings();
+  renderStudents();
+  renderSubjects();
+  renderRegStudentSel();
+  renderGenStudentOpts();
+})();
+
+})();
+</script>
+</body>
+</html>
