@@ -1,5 +1,5 @@
 const BIN_ID  = "6aa01157ffd5d16053ed5ce4";
-const API_KEY = "$2a$10$BmNoiF28T1SNF7SHF6HggO1y8BVfUmb2fzB13Wm9XfSuQfvpV3.cO";
+const API_KEY = "$2a$10$P.BqoFgIbnQVH9pvRRkCuOun8sZH7eay5cQZ1cH1wi3u77XTPrely";
 const BIN_URL = `https://api.jsonbin.io/v3/b/${BIN_ID}`;
 
 export default async function handler(req, res) {
