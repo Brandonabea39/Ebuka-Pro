@@ -502,7 +502,7 @@ const SUB_EXAM={"ANGLOPHONE SECTION":["ANGLOPHONE GENERAL","ANGLOPHONE TECHNICAL
 const GRADES=["A","B","C","D","U","AB"];
 function uid(p){return p+"_"+Date.now().toString(36)+Math.random().toString(36).slice(2,6);}
 function esc(s){if(!s&&s!==0)return"";return String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));}
-function remark(g){if("ABC".includes(g))return"PASSED";if("DU".includes(g))return"FAILED";if(g==="AB")return"ABSENT";return"";}
+function remark(g){if(g==="AB")return"ABSENT";if(g==="A"||g==="B"||g==="C")return"PASSED";if(g==="D"||g==="U")return"FAILED";return"";}
 
 document.querySelectorAll(".tab-btn").forEach(b=>{
   b.addEventListener("click",()=>{
