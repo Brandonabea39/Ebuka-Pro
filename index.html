@@ -90,34 +90,38 @@ table.dt tr:last-child td{border-bottom:none;}
 #reportPreviewWrap{margin-top:20px;display:none;}
 #reportPreviewWrap h3{font-size:12px;color:var(--ink-soft);margin-bottom:8px;text-transform:uppercase;letter-spacing:.5px;}
 .report-shell{background:#ccc;padding:18px;border-radius:8px;overflow:auto;}
-.report-card{width:720px;margin:0 auto;background:#fff;color:#111;font-family:Georgia,'Times New Roman',serif;padding:30px 36px 24px;border:2px solid #16204a;overflow:hidden;position:relative;}
-.rc-content{position:relative;z-index:2;}
-.rc-header{display:flex;justify-content:space-between;gap:12px;}
-.rc-col{width:46%;text-align:center;font-size:10.5px;line-height:1.35;}
-.rc-logo-placeholder{width:52px;height:52px;border-radius:50%;margin:0 auto 3px;border:1px dashed #999;display:flex;align-items:center;justify-content:center;font-size:9px;color:#999;}
-.rc-logo{width:52px;height:52px;border-radius:50%;object-fit:cover;margin:0 auto 3px;display:block;}
-.rc-school-name{font-weight:700;font-size:12px;text-transform:uppercase;}
-.rc-motto{font-style:italic;font-size:10px;margin-top:1px;}
+.report-card{width:720px;min-height:1018px;margin:0 auto;background:#fff;color:#111;font-family:Arial,Helvetica,sans-serif;padding:38px 50px 34px;border:0;overflow:hidden;position:relative;}
+.rc-background{position:absolute;inset:0;background-position:center;background-size:100% 100%;background-repeat:no-repeat;z-index:0;pointer-events:none;}
+.rc-watermark{position:absolute;left:50%;top:49%;width:54%;height:47%;transform:translate(-50%,-50%);object-fit:contain;opacity:.12;mix-blend-mode:multiply;z-index:1;pointer-events:none;}
+.rc-frame{position:absolute;inset:0;width:100%;height:100%;object-fit:fill;z-index:3;pointer-events:none;}
+.rc-content{position:relative;z-index:2;min-height:940px;display:flex;flex-direction:column;}
+.rc-header{display:grid;grid-template-columns:1fr 106px 1fr;align-items:center;gap:12px;}
+.rc-col{text-align:center;font-size:10px;line-height:1.3;}
+.rc-col .rc-school-name{font-weight:700;font-size:10px;text-transform:uppercase;border-bottom:1px solid #222;padding-bottom:2px;margin:0 auto 3px;}
+.rc-logo-placeholder{width:96px;height:96px;margin:auto;border:1px dashed #999;display:flex;align-items:center;justify-content:center;font-size:10px;color:#999;}
+.rc-logo{width:100px;height:100px;object-fit:contain;display:block;margin:auto;}
+.rc-school-name{font-weight:700;font-size:11px;text-transform:uppercase;}
+.rc-motto{font-style:italic;font-size:9.5px;margin-top:1px;}
 .rc-title-block{text-align:center;margin-top:12px;}
-.rc-title-block .l1{font-weight:700;font-size:12px;text-transform:uppercase;}
-.rc-title-block .l2{font-size:11.5px;margin-top:2px;text-transform:uppercase;}
-.rc-title-block .l3{font-weight:700;font-size:13px;text-decoration:underline;margin-top:4px;text-transform:uppercase;}
+.rc-title-block .l1{font-weight:700;font-size:12px;text-transform:uppercase;border-bottom:3px solid #111;padding-bottom:3px;}
+.rc-title-block .l2{font-weight:700;font-size:11.5px;margin-top:2px;text-transform:uppercase;border-bottom:3px solid #111;padding:3px 0;}
+.rc-title-block .l3{font-weight:700;font-size:12px;text-decoration:underline;margin-top:4px;text-transform:uppercase;}
 .rc-idrow{display:flex;justify-content:space-between;align-items:center;margin-top:14px;font-size:11px;font-weight:700;}
-.rc-barcode{height:18px;width:140px;background-image:repeating-linear-gradient(90deg,#111 0 2px,transparent 2px 4px,#111 4px 5px,transparent 5px 8px);}
-.rc-centerrow{margin-top:9px;font-size:11px;font-weight:700;text-align:center;}
+.rc-highlight{display:inline-block;background:#111;color:#fff;padding:2px 5px;line-height:1.2;}
+.rc-centerrow{display:flex;justify-content:center;align-items:center;flex-wrap:wrap;gap:9px;margin-top:9px;font-size:10px;font-weight:700;text-align:center;}
 .rc-sectionrow{margin-top:5px;font-size:11px;font-weight:700;text-align:center;}
 .rc-candidate{margin-top:10px;font-size:12px;font-weight:700;text-align:center;}
-.rc-counts{display:flex;justify-content:space-between;margin-top:9px;font-size:11px;font-weight:700;}
-table.rc-table{width:100%;border-collapse:collapse;margin-top:12px;font-size:11px;}
-table.rc-table th,table.rc-table td{border:1px solid #16204a;padding:5px 7px;}
-table.rc-table th{background:#eef0f7;text-align:left;text-transform:uppercase;font-size:10px;}
+.rc-counts{display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;margin-top:9px;font-size:11px;font-weight:700;}
+table.rc-table{width:100%;border:1px solid #111;border-collapse:collapse;margin-top:12px;font-size:11px;}
+table.rc-table th,table.rc-table td{border-left:1px solid #111;border-right:1px solid #111;padding:4px 7px;}
+table.rc-table th{background:transparent;text-align:left;text-transform:uppercase;font-size:10px;border-bottom:1px solid #111;}
 table.rc-table td.c,table.rc-table th.c{text-align:center;}
-.rc-legend{margin-top:10px;font-size:10px;text-align:center;font-weight:600;}
+.rc-legend{margin-top:10px;font-size:9px;text-align:center;font-weight:700;}
 .rc-disclaimer{margin-top:16px;text-align:center;font-size:10px;line-height:1.7;}
-.rc-footerschool{margin-top:8px;text-align:center;font-weight:700;font-size:10px;text-transform:uppercase;}
-.rc-sigrow{display:flex;justify-content:space-between;margin-top:20px;font-size:10.5px;font-weight:700;}
-.rc-copyright{margin-top:5px;text-align:center;font-size:9px;color:#555;}
-.rc-parentsig{margin-top:22px;font-size:10.5px;font-weight:700;text-align:center;}
+.rc-footerschool{margin-top:8px;text-align:center;font-weight:700;font-size:9px;text-transform:uppercase;}
+.rc-sigrow{display:flex;justify-content:space-between;margin-top:20px;font-size:12px;font-weight:700;}
+.rc-copyright{margin-top:5px;text-align:right;font-size:9px;color:#111;font-weight:700;}
+.rc-parentsig{margin-top:auto;padding-top:20px;font-size:10.5px;font-weight:700;text-align:center;}
 .rc-sigline{width:240px;border-bottom:1px solid #111;margin:18px auto 0;}
 </style>
 </head>
@@ -165,7 +169,7 @@ table.rc-table td.c,table.rc-table th.c{text-align:center;}
     <h2>School Setup</h2>
     <p class="sub">This information appears on every report card. Changes are saved to the shared online database instantly.</p>
     <div class="form-grid">
-      <div class="field full"><label>School Logo</label><input type="file" id="logoInput" accept="image/*"><span class="hint">Shown on both sides of the bilingual header.</span></div>
+      <div class="field full"><label>School Logo</label><input type="file" id="logoInput" accept="image/*"><span class="hint">Shown in the center of the bilingual header and as a faint report background watermark.</span></div>
       <div class="field"><label>School Name</label><input id="s_schoolName" placeholder="e.g. GREENFIELD BILINGUAL SECONDARY SCHOOL"></div>
       <div class="field"><label>Exam Board Abbreviation</label><input id="s_boardAbbrev" placeholder="e.g. G.E.B"></div>
       <div class="field"><label>Motto (English)</label><input id="s_mottoEn" placeholder="e.g. Dedicated to excellence"></div>
@@ -503,6 +507,8 @@ const GRADES=["A","B","C","D","U","AB"];
 function uid(p){return p+"_"+Date.now().toString(36)+Math.random().toString(36).slice(2,6);}
 function esc(s){if(!s&&s!==0)return"";return String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));}
 function remark(g){if(g==="AB")return"ABSENT";if(g==="A"||g==="B"||g==="C")return"PASSED";if(g==="D"||g==="U")return"FAILED";return"";}
+const REPORT_CARD_BACKGROUND="data:image/webp;base64,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";
+const REPORT_CARD_FRAME="data:image/png;base64,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";
 
 document.querySelectorAll(".tab-btn").forEach(b=>{
   b.addEventListener("click",()=>{
@@ -676,30 +682,31 @@ function checkGrades(){
 function buildRC(){
   const s=state.settings;const stuId=gStudent.value;const stu=state.students.find(x=>x.id===stuId);
   const subIds=state.registrations[stuId]||[];const month=document.getElementById("g_month").value;const year=document.getElementById("g_year").value;
-  const examType=gExamType.value;const subExam=gSubExam.value;
-  const rows=subIds.map(sid=>{const sub=state.subjects.find(x=>x.id===sid);const g=(document.querySelector(`[data-gfor="${sid}"]`)||{}).value||"";return{code:sub?sub.code:"",title:sub?sub.title:"",grade:g,remark:remark(g)};}).filter(r=>r.code);
+  const examType=gExamType.value;const examLabel=examType.replace("GCE ","").replace(" PRE-MOCK","").replace(" (PRE-MOCK)","");
+  const rows=subIds.map(sid=>{const sub=state.subjects.find(x=>x.id===sid);const g=(document.querySelector('[data-gfor="'+sid+'"]')||{}).value||"";return{code:sub?sub.code:"",title:sub?sub.title:"",grade:g,remark:remark(g)};}).filter(r=>r.code);
   const passed=rows.filter(r=>r.remark==="PASSED").length;
-  const logoHtml=s.logo?`<img class="rc-logo" src="${s.logo}">`:'<div class="rc-logo-placeholder">LOGO</div>';
+  const logoHtml=s.logo?'<img class="rc-logo" src="'+esc(s.logo)+'" alt="School logo">':'<div class="rc-logo-placeholder">LOGO</div>';
+  const watermarkHtml=s.logo?'<img class="rc-watermark" src="'+esc(s.logo)+'" alt="">':"";
   const sn=s.schoolName||"YOUR SCHOOL NAME";const ba=s.boardAbbrev||"E.B";
-  return`<div class="rc-content">
-<div class="rc-header">
-  <div class="rc-col">${logoHtml}<div class="rc-school-name">${esc(sn)}</div><div class="rc-motto">${esc(s.mottoFr||"")}</div><div>B.P : ${esc(s.poBox||"")}</div><div>CONTACT : ${esc(s.phone||"")}</div><div>E-mail : ${esc(s.email||"")}</div></div>
-  <div class="rc-col">${logoHtml}<div class="rc-school-name">${esc(sn)}</div><div class="rc-motto">${esc(s.mottoEn||"")}</div><div>P.O.BOX : ${esc(s.poBox||"")}</div><div>CONTACT : ${esc(s.phone||"")}</div><div>E-mail : ${esc(s.email||"")}</div></div>
-</div>
-<div class="rc-title-block"><div class="l1">${esc(sn)} MOCK EXAMINATIONS.</div><div class="l2">${esc(examType)}, ${esc(month)} ${esc(year)} SESSION.</div><div class="l3">Result Slip</div></div>
-<div class="rc-idrow"><span>CIN: ${esc(stu.cin)}</span><span class="rc-barcode"></span><span>CGMN: ${esc(stu.cgmn)}</span></div>
-<div class="rc-centerrow">CENTER No: ${esc(s.centerNo||"")} &nbsp;&nbsp; CENTER NAME: ${esc(s.centerName||sn)}</div>
-<div class="rc-sectionrow">SECTION: ${esc(subExam)}</div>
-<div class="rc-candidate">CANDIDATE NAME: ${esc(stu.name.toUpperCase())}</div>
-<div class="rc-counts"><span>NUMBER OF SUBJECTS REGISTERED: ${rows.length}</span><span>NUMBER OF SUBJECTS PASSED: ${passed}</span></div>
-<table class="rc-table"><thead><tr><th class="c">Code</th><th>Subject Name</th><th class="c">Grade</th><th class="c">Remarks</th></tr></thead>
-<tbody>${rows.map(r=>`<tr><td class="c">${esc(r.code)}</td><td>${esc(r.title)}</td><td class="c">${esc(r.grade)}</td><td class="c">${esc(r.remark)}</td></tr>`).join("")}</tbody></table>
-<div class="rc-legend">GRADING FORMAT: &nbsp; A : 76–100 &nbsp; B : 60–75 &nbsp; C : 50–59 &nbsp; D : 35–49 &nbsp; U : &lt; 35 &nbsp; AB : ABSENT</div>
-<div class="rc-disclaimer"><div>THIS IS A RESULT SLIP AND NOT A CERTIFICATE.</div><div>NO ALTERATIONS SHOULD BE MADE ON THIS SLIP.</div></div>
-<div class="rc-footerschool">${esc(sn)}</div>
-<div class="rc-sigrow"><span>THE PRINCIPAL.</span><span>${esc(ba)}</span></div>
-<div class="rc-copyright">&copy; ${esc(ba)} EXAMINATION BOARD ${esc(year)}</div>
-<div class="rc-parentsig">PARENT NAME AND SIGNATURE:<div class="rc-sigline"></div></div></div>`;
+  const tableRows=rows.map(r=>'<tr><td class="c">'+esc(r.code)+'</td><td>'+esc(r.title)+'</td><td class="c">'+esc(r.grade)+'</td><td class="c">'+esc(r.remark)+'</td></tr>').join("");
+  return '<div class="rc-background" style="background-image:url(&quot;'+REPORT_CARD_BACKGROUND+'&quot;)"></div>'+watermarkHtml+
+'<img class="rc-frame" src="'+REPORT_CARD_FRAME+'" alt=""><div class="rc-content">'+
+'<div class="rc-header">'+
+'<div class="rc-col"><div class="rc-school-name">'+esc(sn)+'</div><div class="rc-motto">'+esc(s.mottoFr||"")+'</div><div>B.P : '+esc(s.poBox||"")+'</div><div>CONTACT : '+esc(s.phone||"")+'</div><div>E-mail : '+esc(s.email||"")+'</div></div>'+
+logoHtml+
+'<div class="rc-col"><div class="rc-school-name">'+esc(sn)+'</div><div class="rc-motto">'+esc(s.mottoEn||"")+'</div><div>P.O.BOX : '+esc(s.poBox||"")+'</div><div>CONTACT : '+esc(s.phone||"")+'</div><div>E-mail : '+esc(s.email||"")+'</div></div>'+
+'</div>'+
+'<div class="rc-title-block"><div class="l1">'+esc(sn)+' GCE PREPARATORY MOCK EXAMINATIONS.</div><div class="l2">'+esc(examLabel)+', '+esc(month)+' '+esc(year)+' SESSION.</div><div class="l3">RESULT SLIP.</div></div>'+
+'<div class="rc-idrow"><span>CIN: <b class="rc-highlight">'+esc(stu.cin)+'</b></span><span>CGMN: <b class="rc-highlight">'+esc(stu.cgmn)+'</b></span></div>'+
+'<div class="rc-centerrow"><span>CENTER No: <b class="rc-highlight">'+esc(s.centerNo||"")+'</b></span><span>CENTER NAME: <b class="rc-highlight">'+esc(s.centerName||sn)+'</b></span></div>'+
+'<div class="rc-candidate">CANDIDATE NAME: <b class="rc-highlight">'+esc(stu.name.toUpperCase())+'</b></div>'+
+'<div class="rc-counts"><span>NUMBER OF SUBJECTS REGISTERED: <b class="rc-highlight">'+rows.length+'</b></span><span>NUMBER OF SUBJECTS PASSED: <b class="rc-highlight">'+String(passed).padStart(2,"0")+'</b></span></div>'+
+'<table class="rc-table"><thead><tr><th class="c">CODE</th><th>SUBJECT NAME</th><th class="c">GRADE</th><th class="c">REMARKS</th></tr></thead><tbody>'+tableRows+'</tbody></table>'+
+'<div class="rc-legend">GRADING FORMAT: &nbsp; A : 76–100 &nbsp; B : 60–75 &nbsp; C : 50–59 &nbsp; D : 35–49 &nbsp; U : &lt; 35 &nbsp; AB : ABSENT</div>'+
+'<div class="rc-disclaimer"><div>THIS IS A RESULT SLIP AND NOT A CERTIFICATE.</div><div>NO ALTERATIONS SHOULD BE MADE ON THIS SLIP.</div></div>'+
+'<div class="rc-footerschool">'+esc(sn)+'</div><div class="rc-sigrow"><span>THE PRINCIPAL.</span><span>'+esc(ba)+'</span></div>'+
+'<div class="rc-copyright">&copy; '+esc(ba)+' EXAMINATION BOARD '+esc(year)+'</div>'+
+'<div class="rc-parentsig">PARENT NAME AND SIGNATURE:<div class="rc-sigline"></div></div></div>';
 }
 document.getElementById("generateBtn").addEventListener("click",async()=>{
   const stuId=gStudent.value;const stu=state.students.find(x=>x.id===stuId);if(!stu)return;
@@ -710,7 +717,7 @@ document.getElementById("generateBtn").addEventListener("click",async()=>{
     const canvas=await html2canvas(rc,{scale:2,useCORS:true,backgroundColor:"#ffffff"});
     const imgData=canvas.toDataURL("image/png");const{jsPDF}=window.jspdf;
     const pdf=new jsPDF("p","pt","a4");const pw=pdf.internal.pageSize.getWidth(),ph=pdf.internal.pageSize.getHeight();
-    const ih=(canvas.height*pw)/canvas.width;pdf.addImage(imgData,"PNG",0,0,pw,Math.min(ih,ph));
+    const scale=Math.min(pw/canvas.width,ph/canvas.height);const w=canvas.width*scale,h=canvas.height*scale;pdf.addImage(imgData,"PNG",(pw-w)/2,(ph-h)/2,w,h);
     pdf.save(stu.name.replace(/[^a-z0-9]+/gi,"_")+"_ReportCard.pdf");
     document.getElementById("successOverlay").classList.add("show");
   }catch(e){console.error(e);alert("Something went wrong generating the PDF. Please try again.");}
