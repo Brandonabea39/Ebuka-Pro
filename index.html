@@ -403,7 +403,9 @@ document.getElementById("authForm").addEventListener("submit",async e=>{
   msg.textContent="";
   button.disabled=true;
   button.textContent=isSignUp?"Creating account…":"Signing in…";
-  const endpoint=isSignUp?"/auth/v1/signup":"/auth/v1/token?grant_type=password";
+  const endpoint=isSignUp
+    ?"/auth/v1/signup?redirect_to="+encodeURIComponent(window.location.origin)
+    :"/auth/v1/token?grant_type=password";
   try{
     const res=await fetch(SUPABASE_URL+endpoint,{
       method:"POST",
