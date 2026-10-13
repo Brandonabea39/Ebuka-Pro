@@ -682,7 +682,7 @@ function checkGrades(){
 function buildRC(){
   const s=state.settings;const stuId=gStudent.value;const stu=state.students.find(x=>x.id===stuId);
   const subIds=state.registrations[stuId]||[];const month=document.getElementById("g_month").value;const year=document.getElementById("g_year").value;
-  const examType=gExamType.value;const examLabel=examType.replace("GCE ","").replace(" PRE-MOCK","").replace(" (PRE-MOCK","");
+  const examType=gExamType.value;const examLabel=examType.replace("GCE ","").replace(" PRE-MOCK","").replace(" (PRE-MOCK)","");
   const rows=subIds.map(sid=>{const sub=state.subjects.find(x=>x.id===sid);const g=(document.querySelector('[data-gfor="'+sid+'"]')||{}).value||"";return{code:sub?sub.code:"",title:sub?sub.title:"",grade:g,remark:remark(g)};}).filter(r=>r.code);
   const passed=rows.filter(r=>r.remark==="PASSED").length;
   const logoHtml=s.logo?'<img class="rc-logo" src="'+esc(s.logo)+'" alt="School logo">':'<div class="rc-logo-placeholder">LOGO</div>';
