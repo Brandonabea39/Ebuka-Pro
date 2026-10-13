@@ -21,6 +21,16 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;b
 .db-dot{width:7px;height:7px;border-radius:50%;background:#facc15;flex:none;transition:.3s;}
 .db-dot.ok{background:#4ade80;}
 .db-dot.err{background:#f87171;}
+.auth-screen{position:fixed;inset:0;background:var(--navy-deep);display:flex;align-items:center;justify-content:center;z-index:10000;padding:20px;}
+.auth-card{background:#fff;border-radius:12px;padding:28px;width:100%;max-width:420px;box-shadow:0 20px 60px rgba(0,0,0,.25);}
+.auth-card h2{color:var(--navy);font-size:19px;margin-bottom:6px;}
+.auth-card p{color:var(--ink-soft);font-size:13px;line-height:1.5;margin:8px 0 16px;}
+.auth-card form{display:grid;gap:10px;}
+.auth-card input{width:100%;padding:10px 12px;border:1.5px solid var(--line);border-radius:7px;font:inherit;}
+.auth-card input:focus{outline:none;border-color:var(--gold);box-shadow:0 0 0 3px rgba(176,138,62,.15);}
+.auth-card #authModeBtn{margin-top:12px;background:none;border:0;color:var(--navy);font:inherit;font-weight:700;text-decoration:underline;cursor:pointer;}
+.auth-card #authMessage{min-height:18px;margin-bottom:0;color:var(--danger);font-weight:600;}
+#logoutBtn{white-space:nowrap;}
 .tabs{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:18px;}
 .tab-btn{background:#fff;border:1.5px solid var(--line);color:var(--ink-soft);padding:9px 16px;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;transition:.15s;}
 .tab-btn:hover{border-color:var(--gold);color:var(--navy);background:#fdf9f0;}
@@ -113,6 +123,20 @@ table.rc-table td.c,table.rc-table th.c{text-align:center;}
 </head>
 <body>
 
+<div class="auth-screen" id="authScreen">
+  <div class="auth-card">
+    <h2>School Report Card System</h2>
+    <p id="authIntro">Sign in to securely access the school records.</p>
+    <form id="authForm">
+      <input type="email" id="authEmail" autocomplete="email" placeholder="Email address" required>
+      <input type="password" id="authPassword" autocomplete="current-password" placeholder="Password (at least 8 characters)" minlength="8" required>
+      <button class="btn btn-primary" id="authSubmit" type="submit">Sign in</button>
+    </form>
+    <button id="authModeBtn" type="button">Create an account</button>
+    <p id="authMessage" role="status" aria-live="polite"></p>
+  </div>
+</div>
+
 <div class="loading-screen" id="loadingScreen">
   <div class="spinner"></div>
   <p>Loading data from database…</p>
@@ -125,6 +149,7 @@ table.rc-table td.c,table.rc-table th.c{text-align:center;}
       <h1>School Report Card System</h1>
       <p>Manage students, subjects, registrations — generate official result slips as PDF.</p>
     </div>
+    <button class="btn btn-outline" id="logoutBtn" type="button">Sign out</button>
     <div class="db-badge"><span class="db-dot" id="dbDot"></span><span id="dbStatus">Connecting…</span></div>
   </div>
 
@@ -283,8 +308,135 @@ table.rc-table td.c,table.rc-table th.c{text-align:center;}
 (function(){
 "use strict";
 
-// All DB calls go through our own Vercel serverless function — no CORS issues
-const API = "/api/db";
+// Supabase's publishable key is safe in the browser when every table has RLS enabled.
+const SUPABASE_URL = "https://cbgylqonvgdfvidukczh.supabase.co";
+const SUPABASE_KEY = "sb_publishable_lA5nG0GKbvCwq4HRSei-zQ_7bJj4hm0";
+const SESSION_KEY = "ebuka-supabase-session";
+let authSession = null;
+let isSignUp = false;
+
+function saveSession(session){
+  authSession = Object.assign({}, session, {
+    expires_at: session.expires_at || Date.now() + (session.expires_in || 3600) * 1000
+  });
+  sessionStorage.setItem(SESSION_KEY, JSON.stringify(authSession));
+}
+
+function clearSession(){
+  authSession = null;
+  sessionStorage.removeItem(SESSION_KEY);
+}
+
+async function refreshSession(){
+  if(!authSession || !authSession.refresh_token) throw new Error("Your session expired. Please sign in again.");
+  const res = await fetch(SUPABASE_URL + "/auth/v1/token?grant_type=refresh_token", {
+    method:"POST",
+    headers:{"Content-Type":"application/json","apikey":SUPABASE_KEY},
+    body:JSON.stringify({refresh_token:authSession.refresh_token})
+  });
+  if(!res.ok){clearSession();throw new Error("Your session expired. Please sign in again.");}
+  saveSession(await res.json());
+}
+
+async function supabaseFetch(path, options={}){
+  if(!authSession) throw new Error("Please sign in to continue.");
+  if(authSession.expires_at < Date.now() + 60000) await refreshSession();
+  const send=()=>fetch(SUPABASE_URL + path, Object.assign({}, options, {
+    headers:Object.assign({
+      "apikey":SUPABASE_KEY,
+      "Authorization":"Bearer " + authSession.access_token,
+      "Content-Type":"application/json"
+    }, options.headers || {})
+  }));
+  let res=await send();
+  if(res.status===401){
+    await refreshSession();
+    res=await send();
+  }
+  return res;
+}
+
+async function restoreSession(){
+  let saved;
+  try{saved=JSON.parse(sessionStorage.getItem(SESSION_KEY)||"null");}catch(_){}
+  if(!saved || !saved.refresh_token){clearSession();return null;}
+  authSession=saved;
+  try{
+    if(authSession.expires_at < Date.now() + 60000) await refreshSession();
+    const res=await supabaseFetch("/auth/v1/user");
+    if(!res.ok) throw new Error("Session is invalid.");
+    authSession.user=await res.json();
+    saveSession(authSession);
+    return authSession;
+  }catch(_){clearSession();return null;}
+}
+
+async function finishSignIn(session){
+  saveSession(session);
+  if(!authSession.user){
+    const userRes=await supabaseFetch("/auth/v1/user");
+    if(!userRes.ok) throw new Error("Could not verify your sign-in.");
+    authSession.user=await userRes.json();
+    saveSession(authSession);
+  }
+  await loadFromDB();
+  document.getElementById("authScreen").style.display="none";
+  document.getElementById("loadingScreen").classList.add("hidden");
+  fillSettings();renderStudents();renderSubjects();renderRegStudentSel();renderGenStudentOpts();
+}
+
+document.getElementById("authModeBtn").addEventListener("click",()=>{
+  isSignUp=!isSignUp;
+  document.getElementById("authIntro").textContent=isSignUp
+    ?"Create an account to securely store this school's records."
+    :"Sign in to securely access the school records.";
+  document.getElementById("authSubmit").textContent=isSignUp?"Create account":"Sign in";
+  document.getElementById("authModeBtn").textContent=isSignUp?"Already have an account? Sign in":"Create an account";
+  document.getElementById("authPassword").autocomplete=isSignUp?"new-password":"current-password";
+  document.getElementById("authMessage").textContent="";
+});
+
+document.getElementById("authForm").addEventListener("submit",async e=>{
+  e.preventDefault();
+  const msg=document.getElementById("authMessage");
+  const button=document.getElementById("authSubmit");
+  msg.textContent="";
+  button.disabled=true;
+  button.textContent=isSignUp?"Creating account…":"Signing in…";
+  const endpoint=isSignUp?"/auth/v1/signup":"/auth/v1/token?grant_type=password";
+  try{
+    const res=await fetch(SUPABASE_URL+endpoint,{
+      method:"POST",
+      headers:{"Content-Type":"application/json","apikey":SUPABASE_KEY},
+      body:JSON.stringify({
+        email:document.getElementById("authEmail").value.trim(),
+        password:document.getElementById("authPassword").value
+      })
+    });
+    const result=await res.json();
+    if(!res.ok) throw new Error(result.msg||result.message||result.error_description||result.error||"Authentication failed.");
+    if(!result.access_token){
+      msg.textContent="Account created. Check your email to confirm it, then sign in.";
+      isSignUp=false;
+      document.getElementById("authIntro").textContent="Sign in to securely access the school records.";
+      button.textContent="Sign in";
+      document.getElementById("authModeBtn").textContent="Create an account";
+      return;
+    }
+    await finishSignIn(result);
+  }catch(err){
+    msg.textContent=err.message||"Could not connect to Supabase. Please try again.";
+  }finally{
+    button.disabled=false;
+    if(!document.getElementById("authMessage").textContent) button.textContent=isSignUp?"Create account":"Sign in";
+  }
+});
+
+document.getElementById("logoutBtn").addEventListener("click",async()=>{
+  try{await supabaseFetch("/auth/v1/logout",{method:"POST"});}catch(_){}
+  clearSession();
+  window.location.reload();
+});
 
 const DEFAULT_STATE = {
   settings:{
@@ -308,32 +460,33 @@ function setStatus(msg, s){
 }
 
 async function loadFromDB(){
-  try {
-    const res = await fetch(API);
-    if(!res.ok) throw new Error(res.status);
-    const remote = await res.json();
-    state = Object.assign(JSON.parse(JSON.stringify(DEFAULT_STATE)), remote);
-    setStatus("Synced", "ok");
-  } catch(e) {
-    setStatus("DB error — check console", "err");
-    console.error("Load error:", e);
-  }
+  const url="/rest/v1/app_state?user_id=eq."+encodeURIComponent(authSession.user.id)+"&select=payload&limit=1";
+  const res=await supabaseFetch(url);
+  if(!res.ok) throw new Error("Database load failed ("+res.status+"). Check the Supabase table and access policies.");
+  const rows=await res.json();
+  state=Object.assign(JSON.parse(JSON.stringify(DEFAULT_STATE)),rows[0]?.payload||{});
+  setStatus("Synced","ok");
 }
 
 async function saveToDB(){
-  setStatus("Saving…", "");
-  try {
-    const res = await fetch(API, {
-      method:"PUT",
-      headers:{"Content-Type":"application/json"},
-      body: JSON.stringify(state)
+  if(!authSession || !authSession.user) return;
+  setStatus("Saving…","");
+  try{
+    const res=await supabaseFetch("/rest/v1/app_state?on_conflict=user_id",{
+      method:"POST",
+      headers:{"Prefer":"resolution=merge-duplicates,return=minimal"},
+      body:JSON.stringify({
+        user_id:authSession.user.id,
+        payload:state,
+        updated_at:new Date().toISOString()
+      })
     });
-    if(!res.ok) throw new Error(res.status);
-    setStatus("Saved ✓", "ok");
-    setTimeout(()=>setStatus("Synced","ok"), 1500);
-  } catch(e) {
-    setStatus("Save failed!", "err");
-    console.error("Save error:", e);
+    if(!res.ok) throw new Error("Database save failed ("+res.status+").");
+    setStatus("Saved ✓","ok");
+    setTimeout(()=>setStatus("Synced","ok"),1500);
+  }catch(e){
+    setStatus("Save failed!","err");
+    console.error("Save error:",e);
   }
 }
 
@@ -567,9 +720,21 @@ document.getElementById("successOkBtn").addEventListener("click",()=>document.ge
 });
 
 (async function init(){
-  await loadFromDB();
-  document.getElementById("loadingScreen").classList.add("hidden");
-  fillSettings();renderStudents();renderSubjects();renderRegStudentSel();renderGenStudentOpts();
+  const session=await restoreSession();
+  if(!session){
+    document.getElementById("loadingScreen").classList.add("hidden");
+    return;
+  }
+  try{
+    await loadFromDB();
+    document.getElementById("authScreen").style.display="none";
+    document.getElementById("loadingScreen").classList.add("hidden");
+    fillSettings();renderStudents();renderSubjects();renderRegStudentSel();renderGenStudentOpts();
+  }catch(e){
+    setStatus("Database unavailable","err");
+    document.getElementById("authMessage").textContent=e.message||"Could not load school data.";
+    document.getElementById("loadingScreen").classList.add("hidden");
+  }
 })();
 })();
 </script>
