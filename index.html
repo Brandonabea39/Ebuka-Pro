@@ -725,6 +725,7 @@ document.getElementById("successOkBtn").addEventListener("click",()=>document.ge
   const session=await restoreSession();
   if(!session){
     document.getElementById("loadingScreen").classList.add("hidden");
+    document.getElementById("authScreen").style.display="flex";
     return;
   }
   try{
@@ -736,6 +737,7 @@ document.getElementById("successOkBtn").addEventListener("click",()=>document.ge
     setStatus("Database unavailable","err");
     document.getElementById("authMessage").textContent=e.message||"Could not load school data.";
     document.getElementById("loadingScreen").classList.add("hidden");
+    document.getElementById("authScreen").style.display="flex";
   }
 })();
 })();
