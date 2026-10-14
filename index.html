@@ -167,6 +167,7 @@ table.rc-table td.c,table.rc-table th.c{text-align:center;}
     <button class="tab-btn active" data-tab="settings">School Setup</button>
     <button class="tab-btn" data-tab="students">Students</button>
     <button class="tab-btn" data-tab="subjects">Subjects</button>
+    <button class="tab-btn" data-tab="import">Import CSV</button>
     <button class="tab-btn" data-tab="registration">Registration</button>
     <button class="tab-btn" data-tab="generate">Generate Report Card</button>
   </div>
@@ -204,6 +205,31 @@ table.rc-table td.c,table.rc-table th.c{text-align:center;}
     <p class="sub">Define subject codes and titles that students can be registered for.</p>
     <button class="btn btn-gold" id="addSubjectBtn">+ Add subject</button>
     <div id="subjectsTableWrap" style="margin-top:14px;"></div>
+  </div>
+
+  <div class="panel" id="panel-import">
+    <h2>Import school data</h2>
+    <p class="sub">Upload CSV files to add or update students, subjects, and grades. Imports are saved to your school's database.</p>
+    <p class="hint">Student rows match by CIN or CGMN; subject rows match by code. Results match existing students by CIN, CGMN, or exact name, and subjects by code or exact title.</p>
+    <div class="form-grid">
+      <div class="field"><label for="importType">What are you importing?</label>
+        <select id="importType"><option value="students">Students</option><option value="subjects">Subjects</option><option value="results">Results / grades</option></select>
+      </div>
+      <div class="field"><label for="importFile">CSV file</label><input id="importFile" type="file" accept=".csv,text/csv"><span class="hint">Use a UTF-8 CSV file. Download a template to see the expected columns.</span></div>
+    </div>
+    <div id="resultImportContext" style="display:none;margin-top:14px;">
+      <p class="sub">Choose the exam details for this results file. The CSV can override these values using matching columns. Results may use one student-subject-grade row per result, or one student per row with subject codes or titles as column headings.</p>
+      <div class="form-grid">
+        <div class="field"><label for="importSection">Exam section</label><select id="importSection"><option value="">Select section</option><option>ANGLOPHONE SECTION</option><option>FRANCOPHONE SECTION</option></select></div>
+        <div class="field"><label for="importExamType">Exam type</label><select id="importExamType" disabled><option value="">Select exam type</option></select></div>
+        <div class="field"><label for="importSubExam">Sub-section</label><select id="importSubExam" disabled><option value="">Select sub-section</option></select></div>
+        <div class="field"><label for="importMonth">Month</label><select id="importMonth"><option>January</option><option>February</option><option>March</option><option>April</option><option>May</option><option>June</option><option>July</option><option>August</option><option>September</option><option>October</option><option selected>November</option><option>December</option></select></div>
+        <div class="field"><label for="importYear">Year</label><input id="importYear" type="number" min="2000" max="2100" value="2026"></div>
+      </div>
+    </div>
+    <div class="btn-row"><button class="btn btn-outline" id="downloadImportTemplate" type="button">Download CSV template</button><button class="btn btn-primary" id="applyImportBtn" type="button" disabled>Import CSV</button></div>
+    <div id="importFeedback" role="status" aria-live="polite" style="margin-top:12px;"></div>
+    <div id="importPreview" style="margin-top:12px;"></div>
   </div>
 
   <div class="panel" id="panel-registration">
@@ -462,7 +488,7 @@ const DEFAULT_STATE = {
     centerName:"KAMGAI INTERNATIONAL BILINGUAL SECONDARY SCHOOL",
     boardAbbrev:"K.E.B"
   },
-  students:[],subjects:[],registrations:{}
+  students:[],subjects:[],registrations:{},results:[]
 };
 let state = JSON.parse(JSON.stringify(DEFAULT_STATE));
 let saveTimer = null;
@@ -501,7 +527,9 @@ async function saveToDB(){
   }catch(e){
     setStatus("Save failed!","err");
     console.error("Save error:",e);
+    return false;
   }
+  return true;
 }
 
 function scheduleSave(){
@@ -639,6 +667,269 @@ document.getElementById("saveRegistrationBtn").addEventListener("click",async()=
   scheduleSave();
 });
 
+function normalizeCsvHeader(value){
+  return String(value||"").replace(/^\uFEFF/,"").trim().toLowerCase().replace(/[^a-z0-9]+/g," ").trim().replace(/\s+/g," ");
+}
+function parseCsvRows(text){
+  text=String(text||"").replace(/^\uFEFF/,"");
+  const firstLine=(text.split(/\r?\n/)[0]||"");
+  const delimiter=(firstLine.split(";").length>firstLine.split(",").length)?";":",";
+  const rows=[];let row=[],field="",quoted=false;
+  for(let i=0;i<text.length;i++){
+    const ch=text[i];
+    if(quoted){
+      if(ch==='"'&&text[i+1]==='"'){field+='"';i++;}
+      else if(ch==='"')quoted=false;
+      else field+=ch;
+    }else if(ch==='"'&&field===""){quoted=true;}
+    else if(ch===delimiter){row.push(field.trim());field="";}
+    else if(ch==="\n"||ch==="\r"){
+      if(ch==="\r"&&text[i+1]==="\n")i++;
+      row.push(field.trim());field="";
+      if(row.some(cell=>cell!==""))rows.push(row);
+      row=[];
+    }else field+=ch;
+  }
+  if(quoted)throw new Error("This CSV has a quotation mark that was not closed.");
+  row.push(field.trim());if(row.some(cell=>cell!==""))rows.push(row);
+  if(rows.length<2)throw new Error("Add a header row and at least one data row to the CSV.");
+  const headers=rows.shift().map(normalizeCsvHeader);
+  if(!headers.some(Boolean))throw new Error("The CSV header row is empty.");
+  return rows.map(cells=>{
+    const item={};
+    headers.forEach((header,index)=>{if(header)item[header]=cells[index]||"";});
+    return item;
+  });
+}
+const CSV_ALIASES={
+  name:["name","full name","student name","student full name","candidate name"],
+  cgmn:["cgmn","student cgmn","candidate number","candidate registration number"],
+  cin:["cin","student cin","candidate identification number","identification number"],
+  dob:["dob","date of birth","birth date"],
+  pob:["pob","place of birth","birth place"],
+  fatherName:["father name","father s name","fathers name"],
+  fatherPhone:["father phone","father s phone","fathers phone"],
+  motherName:["mother name","mother s name","mothers name"],
+  motherPhone:["mother phone","mother s phone","mothers phone"],
+  code:["subject code","code"],
+  title:["subject title","subject name","title","subject"],
+  studentName:["student name","candidate name","full name","name","student"],
+  studentCin:["student cin","cin","candidate identification number"],
+  studentCgmn:["student cgmn","cgmn","candidate number"],
+  grade:["grade","mark","result"],
+  section:["exam section","section"],
+  examType:["exam type","exam","session type"],
+  subExam:["sub section","sub exam","subsection","series"],
+  month:["month","exam month"],
+  year:["year","exam year"]
+};
+function csvValue(row,field){
+  const aliases=CSV_ALIASES[field]||[field];
+  for(const alias of aliases){const key=normalizeCsvHeader(alias);if(row[key])return String(row[key]).trim();}
+  return "";
+}
+function canonicalOption(value,options){
+  const key=normalizeCsvHeader(value);
+  return options.find(option=>normalizeCsvHeader(option)===key)||"";
+}
+let pendingCsvImport=null;
+function importOptionsForType(){
+  const type=document.getElementById("importType").value;
+  document.getElementById("resultImportContext").style.display=type==="results"?"block":"none";
+  document.getElementById("applyImportBtn").disabled=true;
+  document.getElementById("importPreview").innerHTML="";
+  document.getElementById("importFeedback").textContent="";
+  pendingCsvImport=null;
+  document.getElementById("importFile").value="";
+}
+function refreshImportExamOptions(){
+  const section=document.getElementById("importSection").value;
+  const exam=document.getElementById("importExamType");
+  const sub=document.getElementById("importSubExam");
+  exam.innerHTML='<option value="">Select exam type</option>'+(EXAM_TYPES[section]||[]).map(v=>'<option>'+esc(v)+'</option>').join("");
+  exam.disabled=!section;
+  sub.innerHTML='<option value="">Select sub-section</option>'+(SUB_EXAM[section]||[]).map(v=>'<option>'+esc(v)+'</option>').join("");
+  sub.disabled=true;
+}
+function currentImportContext(row){
+  const sectionOptions=["ANGLOPHONE SECTION","FRANCOPHONE SECTION"];
+  const section=canonicalOption(csvValue(row,"section")||document.getElementById("importSection").value,sectionOptions);
+  const examType=canonicalOption(csvValue(row,"examType")||document.getElementById("importExamType").value,EXAM_TYPES[section]||[]);
+  const subExam=canonicalOption(csvValue(row,"subExam")||document.getElementById("importSubExam").value,SUB_EXAM[section]||[]);
+  const months=["January","February","March","April","May","June","July","August","September","October","November","December"];
+  const month=canonicalOption(csvValue(row,"month")||document.getElementById("importMonth").value,months);
+  const rawYear=csvValue(row,"year")||document.getElementById("importYear").value;
+  const year=/^(19|20|21)\d{2}$/.test(String(rawYear).trim())?String(rawYear).trim():"";
+  return {section,examType,subExam,month,year};
+}
+function buildImportRows(type,rows){
+  const valid=[],issues=[];
+  const reservedHeaders=["student cin","cin","candidate identification number","student cgmn","cgmn","candidate number","student name","candidate name","full name","name","student","grade","mark","result","exam section","section","exam type","exam","session type","sub section","sub exam","subsection","series","month","exam month","year","exam year"].map(normalizeCsvHeader);
+  rows.forEach((row,index)=>{
+    const line=index+2;
+    if(type==="students"){
+      const name=csvValue(row,"name");
+      if(!name){issues.push("Row "+line+": student name is required.");return;}
+      const cin=csvValue(row,"cin"),cgmn=csvValue(row,"cgmn");
+      const byCin=cin?state.students.filter(x=>normalizeCsvHeader(x.cin)===normalizeCsvHeader(cin)):[];
+      const byCgmn=cgmn?state.students.filter(x=>normalizeCsvHeader(x.cgmn)===normalizeCsvHeader(cgmn)):[];
+      if(byCin.length>1||byCgmn.length>1||(byCin.length&&byCgmn.length&&byCin[0].id!==byCgmn[0].id)){issues.push("Row "+line+": CIN and CGMN must identify one unique existing student.");return;}
+      valid.push({name:name,cgmn:cgmn,cin:cin,dob:csvValue(row,"dob"),pob:csvValue(row,"pob"),fatherName:csvValue(row,"fatherName"),fatherPhone:csvValue(row,"fatherPhone"),motherName:csvValue(row,"motherName"),motherPhone:csvValue(row,"motherPhone")});return;
+    }
+    if(type==="subjects"){
+      const code=csvValue(row,"code"),title=csvValue(row,"title");
+      if(!code||!title){issues.push("Row "+line+": subject code and subject title are required.");return;}
+      if(state.subjects.filter(x=>normalizeCsvHeader(x.code)===normalizeCsvHeader(code)).length>1){issues.push("Row "+line+": this subject code matches multiple existing subjects.");return;}
+      valid.push({code:code,title:title});return;
+    }
+    const cin=csvValue(row,"studentCin"),cgmn=csvValue(row,"studentCgmn"),name=csvValue(row,"studentName");
+    if(!cin&&!cgmn&&!name){issues.push("Row "+line+": add a student CIN, CGMN, or exact name.");return;}
+    let studentMatches=[];
+    if(cin)studentMatches=state.students.filter(x=>normalizeCsvHeader(x.cin)===normalizeCsvHeader(cin));
+    if(!studentMatches.length&&cgmn)studentMatches=state.students.filter(x=>normalizeCsvHeader(x.cgmn)===normalizeCsvHeader(cgmn));
+    if(!studentMatches.length&&name)studentMatches=state.students.filter(x=>normalizeCsvHeader(x.name)===normalizeCsvHeader(name));
+    if(studentMatches.length!==1){issues.push("Row "+line+": student could not be matched uniquely. Check the CIN, CGMN, or name.");return;}
+    const context=currentImportContext(row);
+    if(!context.section||!context.examType||!context.subExam||!context.month||!context.year){issues.push("Row "+line+": choose a complete exam context or provide valid exam section, exam type, sub-section, month, and year columns.");return;}
+    const subjectCode=csvValue(row,"code"),subjectTitle=csvValue(row,"title"),gradeValue=csvValue(row,"grade");
+    if(subjectCode||subjectTitle||gradeValue){
+      if(!subjectCode&&!subjectTitle){issues.push("Row "+line+": add a subject code or exact subject title.");return;}
+      if(!gradeValue){issues.push("Row "+line+": grade is required.");return;}
+      let subjectMatches=[];
+      if(subjectCode)subjectMatches=state.subjects.filter(x=>normalizeCsvHeader(x.code)===normalizeCsvHeader(subjectCode));
+      if(!subjectMatches.length&&subjectTitle)subjectMatches=state.subjects.filter(x=>normalizeCsvHeader(x.title)===normalizeCsvHeader(subjectTitle));
+      if(subjectMatches.length!==1){issues.push("Row "+line+": subject could not be matched uniquely. Check its code or title.");return;}
+      const grade=gradeValue.toUpperCase().replace(/\s+/g," "),normalizedGrade=grade==="ABSENT"?"AB":grade;
+      if(!GRADES.includes(normalizedGrade)){issues.push("Row "+line+": grade must be A, B, C, D, U, or AB/Absent.");return;}
+      valid.push({studentId:studentMatches[0].id,subjectId:subjectMatches[0].id,grade:normalizedGrade,section:context.section,examType:context.examType,subExam:context.subExam,month:context.month,year:context.year});
+      return;
+    }
+    let matchedColumns=0;
+    Object.keys(row).forEach(header=>{
+      const value=row[header];if(!value||reservedHeaders.includes(header))return;
+      const matches=state.subjects.filter(subject=>normalizeCsvHeader(subject.code)===header||normalizeCsvHeader(subject.title)===header);
+      if(matches.length>1){issues.push("Row "+line+": subject column '"+header+"' matches more than one subject.");return;}
+      if(!matches.length)return;
+      matchedColumns++;
+      const grade=String(value).toUpperCase().replace(/\s+/g," "),normalizedGrade=grade==="ABSENT"?"AB":grade;
+      if(!GRADES.includes(normalizedGrade)){issues.push("Row "+line+", "+header+": grade must be A, B, C, D, U, or AB/Absent.");return;}
+      valid.push({studentId:studentMatches[0].id,subjectId:matches[0].id,grade:normalizedGrade,section:context.section,examType:context.examType,subExam:context.subExam,month:context.month,year:context.year});
+    });
+    if(!matchedColumns)issues.push("Row "+line+": no subject columns matched. Use subject_code/grade columns or subject codes/titles as column headers.");
+  });
+  return {valid,issues,total:rows.length};
+}
+function renderImportPreview(data,type){
+  const summary=document.getElementById("importFeedback");
+  const preview=document.getElementById("importPreview");
+  const apply=document.getElementById("applyImportBtn");
+  summary.textContent=type==="results"?data.valid.length+" grade(s) ready from "+data.total+" CSV row(s)."+(data.issues.length?" "+data.issues.length+" row(s) need correction.":""):data.valid.length+" of "+data.total+" rows ready to import."+(data.issues.length?" "+data.issues.length+" row(s) need correction.":"");
+  let html="";
+  if(data.valid.length){
+    const columns=type==="students"?["name","cgmn","cin"]:type==="subjects"?["code","title"]:["studentId","subjectId","grade","section","examType","subExam","month","year"];
+    html+='<table class="dt"><thead><tr>'+columns.map(c=>'<th>'+esc(c==="studentId"?"Student":c==="subjectId"?"Subject":c)+'</th>').join("")+'</tr></thead><tbody>';
+    data.valid.slice(0,5).forEach(item=>{
+      const cells=columns.map(c=>{
+        let value=item[c]||"";
+        if(c==="studentId"){const st=state.students.find(x=>x.id===value);value=st?st.name:value;}
+        if(c==="subjectId"){const sub=state.subjects.find(x=>x.id===value);value=sub?sub.code+" — "+sub.title:value;}
+        return '<td>'+esc(value)+'</td>';
+      });
+      html+='<tr>'+cells.join("")+'</tr>';
+    });
+    html+="</tbody></table>";
+    if(data.valid.length>5)html+='<p class="hint">Showing the first 5 valid rows.</p>';
+  }
+  if(data.issues.length)html+='<div class="empty" style="text-align:left;color:var(--danger);"><b>Rows to fix</b>'+data.issues.slice(0,8).map(esc).join("<br>")+(data.issues.length>8?"<br>More errors are listed in the count above.":"")+'</div>';
+  preview.innerHTML=html;
+  apply.disabled=data.valid.length===0;
+  apply.textContent=data.valid.length?"Import "+data.valid.length+" valid row"+(data.valid.length===1?"":"s"):"Import CSV";
+}
+async function prepareCsvImport(file){
+  const type=document.getElementById("importType").value;
+  document.getElementById("importFeedback").textContent="Reading CSV…";
+  document.getElementById("importPreview").innerHTML="";
+  document.getElementById("applyImportBtn").disabled=true;
+  try{
+    const rows=parseCsvRows(await file.text());
+    const result=buildImportRows(type,rows);
+    pendingCsvImport={type:type,data:result};
+    renderImportPreview(result,type);
+  }catch(error){
+    pendingCsvImport=null;
+    document.getElementById("importFeedback").textContent="Could not read this CSV: "+error.message;
+  }
+}
+function mergeStudentImport(data){
+  const byCin=data.cin?state.students.filter(x=>normalizeCsvHeader(x.cin)===normalizeCsvHeader(data.cin)):[];
+  const byCgmn=data.cgmn?state.students.filter(x=>normalizeCsvHeader(x.cgmn)===normalizeCsvHeader(data.cgmn)):[];
+  if(byCin.length>1||byCgmn.length>1)throw new Error("A student CIN or CGMN matches more than one existing record.");
+  const cinMatch=byCin[0]||null,cgmnMatch=byCgmn[0]||null;
+  if(cinMatch&&cgmnMatch&&cinMatch.id!==cgmnMatch.id)throw new Error("A student CIN and CGMN in the same row match different records.");
+  const existing=cinMatch||cgmnMatch;
+  if(existing)Object.keys(data).forEach(key=>{if(data[key])existing[key]=data[key];});
+  else state.students.push(Object.assign({id:uid("stu")},data));
+}
+function mergeSubjectImport(data){
+  const matches=state.subjects.filter(item=>normalizeCsvHeader(item.code)===normalizeCsvHeader(data.code));
+  if(matches.length>1)throw new Error("A subject code matches more than one existing record.");
+  if(matches[0])matches[0].title=data.title;
+  else state.subjects.push({id:uid("sub"),code:data.code,title:data.title});
+}
+function resultKey(result){
+  return [result.studentId,result.subjectId,result.section,result.examType,result.subExam,result.month,result.year].join("|");
+}
+async function applyCsvImport(){
+  if(!pendingCsvImport||!pendingCsvImport.data.valid.length)return;
+  const button=document.getElementById("applyImportBtn");
+  button.disabled=true;
+  const type=pendingCsvImport.type,data=pendingCsvImport.data;
+  try{
+    if(type==="students")data.valid.forEach(mergeStudentImport);
+    else if(type==="subjects")data.valid.forEach(mergeSubjectImport);
+    else data.valid.forEach(result=>{
+      const index=state.results.findIndex(existing=>resultKey(existing)===resultKey(result));
+      if(index>=0)state.results[index]=result;
+      else state.results.push(result);
+      const registrations=state.registrations[result.studentId]||(state.registrations[result.studentId]=[]);
+      if(!registrations.includes(result.subjectId))registrations.push(result.subjectId);
+    });
+    renderStudents();renderSubjects();renderRegStudentSel();renderGenStudentOpts();
+    clearTimeout(saveTimer);
+    const saved=await saveToDB();
+    document.getElementById("importFeedback").textContent="Imported "+data.valid.length+" row"+(data.valid.length===1?"":"s")+"."+(data.issues.length?" "+data.issues.length+" row(s) were skipped; fix them and upload again.":"")+(saved?" Saved to your database.":" Save failed; check your connection and try again.");
+    document.getElementById("applyImportBtn").textContent="Import complete";
+  }catch(error){
+    button.disabled=false;
+    document.getElementById("importFeedback").textContent="Import stopped: "+error.message;
+  }
+}
+function downloadCsvTemplate(){
+  const type=document.getElementById("importType").value;
+  const templates={
+    students:"name,cgmn,cin,dob,pob,fatherName,fatherPhone,motherName,motherPhone\r\nATANGA NOELLA PETRA,242467242,120225004,12/03/2008,Yaounde,,,,\r\n",
+    subjects:"code,title\r\n0535,ENGLISH LANGUAGE\r\n",
+    results:"student_cin,student_cgmn,student_name,subject_code,subject_title,grade\r\n120225004,242467242,ATANGA NOELLA PETRA,0535,ENGLISH LANGUAGE,A\r\n"
+  };
+  const blob=new Blob([templates[type]],{type:"text/csv;charset=utf-8"});
+  const url=URL.createObjectURL(blob);const link=document.createElement("a");
+  link.href=url;link.download=type+"_template.csv";link.click();setTimeout(()=>URL.revokeObjectURL(url),1000);
+}
+document.getElementById("importType").addEventListener("change",importOptionsForType);
+document.getElementById("importSection").addEventListener("change",refreshImportExamOptions);
+document.getElementById("importExamType").addEventListener("change",()=>{
+  const section=document.getElementById("importSection").value;
+  const sub=document.getElementById("importSubExam");
+  sub.innerHTML='<option value="">Select sub-section</option>'+(SUB_EXAM[section]||[]).map(v=>'<option>'+esc(v)+'</option>').join("");
+  sub.disabled=!document.getElementById("importExamType").value;
+});
+document.getElementById("importFile").addEventListener("change",event=>{
+  const file=event.target.files&&event.target.files[0];
+  if(file)prepareCsvImport(file);
+});
+document.getElementById("downloadImportTemplate").addEventListener("click",downloadCsvTemplate);
+document.getElementById("applyImportBtn").addEventListener("click",applyCsvImport);
+
 const gSection=document.getElementById("g_section"),gExamType=document.getElementById("g_examType"),gSubExam=document.getElementById("g_subExam"),gStudent=document.getElementById("g_student");
 function pill(n,on){document.getElementById("pill-"+n).classList.toggle("done",!!on);}
 gSection.addEventListener("change",()=>{
@@ -672,16 +963,35 @@ gStudent.addEventListener("change",()=>{
   document.getElementById("wrap_grades").style.display="none";document.getElementById("reportPreviewWrap").style.display="none";pill(5,false);
   if(!v)return;renderGradesTable(v);document.getElementById("wrap_grades").style.display="block";
 });
+["g_month","g_year"].forEach(id=>document.getElementById(id).addEventListener("change",()=>{
+  if(gStudent.value)renderGradesTable(gStudent.value);
+}));
+function currentReportContext(){
+  return {section:gSection.value,examType:gExamType.value,subExam:gSubExam.value,month:document.getElementById("g_month").value,year:document.getElementById("g_year").value};
+}
+function saveManualGrade(stuId,subjectId,grade){
+  const result=Object.assign({studentId:stuId,subjectId:subjectId},currentReportContext());
+  const index=state.results.findIndex(existing=>resultKey(existing)===resultKey(result));
+  if(!grade){if(index>=0)state.results.splice(index,1);else return;}
+  else{
+    result.grade=grade;
+    if(index>=0)state.results[index]=result;else state.results.push(result);
+  }
+  scheduleSave();
+}
 function renderGradesTable(stuId){
   const wrap=document.getElementById("gradesTableWrap");const subs=state.registrations[stuId]||[];
   if(!subs.length){wrap.innerHTML='<div class="empty"><b>No subjects registered</b>Register this student for subjects in the Registration tab first.</div>';document.getElementById("generateBtn").disabled=true;return;}
   document.getElementById("generateBtn").disabled=false;
+  const context=currentReportContext();
   let h='<table class="dt"><thead><tr><th>Code</th><th>Subject</th><th>Grade</th></tr></thead><tbody>';
   subs.forEach(sid=>{const s=state.subjects.find(x=>x.id===sid);if(!s)return;
-    h+=`<tr><td>${esc(s.code)}</td><td>${esc(s.title)}</td><td><select class="grade-sel" data-gfor="${sid}"><option value="">--</option>${GRADES.map(g=>`<option>${g}</option>`).join("")}</select></td></tr>`;
+    const saved=state.results.find(r=>r.studentId===stuId&&r.subjectId===sid&&r.section===context.section&&r.examType===context.examType&&r.subExam===context.subExam&&r.month===context.month&&r.year===context.year);
+    const options='<option value="">--</option>'+GRADES.map(g=>'<option'+(saved&&saved.grade===g?' selected':'')+'>'+g+'</option>').join("");
+    h+='<tr><td>'+esc(s.code)+'</td><td>'+esc(s.title)+'</td><td><select class="grade-sel" data-gfor="'+esc(sid)+'">'+options+'</select></td></tr>';
   });
   h+="</tbody></table>";wrap.innerHTML=h;
-  wrap.querySelectorAll("[data-gfor]").forEach(s=>s.addEventListener("change",checkGrades));checkGrades();
+  wrap.querySelectorAll("[data-gfor]").forEach(sel=>sel.addEventListener("change",()=>{saveManualGrade(stuId,sel.dataset.gfor,sel.value);checkGrades();}));checkGrades();
 }
 function checkGrades(){
   const sels=document.querySelectorAll("[data-gfor]");
