@@ -941,16 +941,32 @@ gStudent.addEventListener("change",()=>{
   document.getElementById("wrap_grades").style.display="none";document.getElementById("reportPreviewWrap").style.display="none";pill(5,false);
   if(!v)return;renderGradesTable(v);document.getElementById("wrap_grades").style.display="block";
 });
+function currentReportContext(){
+  return {section:gSection.value,examType:gExamType.value,subExam:gSubExam.value,month:document.getElementById("g_month").value,year:document.getElementById("g_year").value};
+}
+function saveManualGrade(stuId,subjectId,grade){
+  const result=Object.assign({studentId:stuId,subjectId:subjectId},currentReportContext());
+  const index=state.results.findIndex(existing=>resultKey(existing)===resultKey(result));
+  if(!grade){if(index>=0)state.results.splice(index,1);else return;}
+  else{
+    result.grade=grade;
+    if(index>=0)state.results[index]=result;else state.results.push(result);
+  }
+  scheduleSave();
+}
 function renderGradesTable(stuId){
   const wrap=document.getElementById("gradesTableWrap");const subs=state.registrations[stuId]||[];
   if(!subs.length){wrap.innerHTML='<div class="empty"><b>No subjects registered</b>Register this student for subjects in the Registration tab first.</div>';document.getElementById("generateBtn").disabled=true;return;}
   document.getElementById("generateBtn").disabled=false;
+  const context=currentReportContext();
   let h='<table class="dt"><thead><tr><th>Code</th><th>Subject</th><th>Grade</th></tr></thead><tbody>';
   subs.forEach(sid=>{const s=state.subjects.find(x=>x.id===sid);if(!s)return;
-    h+=`<tr><td>${esc(s.code)}</td><td>${esc(s.title)}</td><td><select class="grade-sel" data-gfor="${sid}"><option value="">--</option>${GRADES.map(g=>`<option>${g}</option>`).join("")}</select></td></tr>`;
+    const saved=state.results.find(r=>r.studentId===stuId&&r.subjectId===sid&&r.section===context.section&&r.examType===context.examType&&r.subExam===context.subExam&&r.month===context.month&&r.year===context.year);
+    const options='<option value="">--</option>'+GRADES.map(g=>'<option'+(saved&&saved.grade===g?' selected':'')+'>'+g+'</option>').join("");
+    h+='<tr><td>'+esc(s.code)+'</td><td>'+esc(s.title)+'</td><td><select class="grade-sel" data-gfor="'+esc(sid)+'">'+options+'</select></td></tr>';
   });
   h+="</tbody></table>";wrap.innerHTML=h;
-  wrap.querySelectorAll("[data-gfor]").forEach(s=>s.addEventListener("change",checkGrades));checkGrades();
+  wrap.querySelectorAll("[data-gfor]").forEach(sel=>sel.addEventListener("change",()=>{saveManualGrade(stuId,sel.dataset.gfor,sel.value);checkGrades();}));checkGrades();
 }
 function checkGrades(){
   const sels=document.querySelectorAll("[data-gfor]");
