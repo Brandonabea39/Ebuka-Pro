@@ -763,6 +763,7 @@ function currentImportContext(row){
 }
 function buildImportRows(type,rows){
   const valid=[],issues=[];
+  const reservedHeaders=["student cin","cin","candidate identification number","student cgmn","cgmn","candidate number","student name","candidate name","full name","name","student","grade","mark","result","exam section","section","exam type","exam","session type","sub section","sub exam","subsection","series","month","exam month","year","exam year"].map(normalizeCsvHeader);
   rows.forEach((row,index)=>{
     const line=index+2;
     if(type==="students"){
@@ -776,24 +777,39 @@ function buildImportRows(type,rows){
       valid.push({code:code,title:title});return;
     }
     const cin=csvValue(row,"studentCin"),cgmn=csvValue(row,"studentCgmn"),name=csvValue(row,"studentName");
-    const subjectCode=csvValue(row,"code"),subjectTitle=csvValue(row,"title");
-    const grade=csvValue(row,"grade").toUpperCase().replace(/\s+/g," ");
     if(!cin&&!cgmn&&!name){issues.push("Row "+line+": add a student CIN, CGMN, or exact name.");return;}
-    if(!subjectCode&&!subjectTitle){issues.push("Row "+line+": add a subject code or exact subject title.");return;}
-    const normalizedGrade=grade==="ABSENT"?"AB":grade;
-    if(!GRADES.includes(normalizedGrade)){issues.push("Row "+line+": grade must be A, B, C, D, U, or AB/Absent.");return;}
     let studentMatches=[];
     if(cin)studentMatches=state.students.filter(x=>normalizeCsvHeader(x.cin)===normalizeCsvHeader(cin));
     if(!studentMatches.length&&cgmn)studentMatches=state.students.filter(x=>normalizeCsvHeader(x.cgmn)===normalizeCsvHeader(cgmn));
     if(!studentMatches.length&&name)studentMatches=state.students.filter(x=>normalizeCsvHeader(x.name)===normalizeCsvHeader(name));
     if(studentMatches.length!==1){issues.push("Row "+line+": student could not be matched uniquely. Check the CIN, CGMN, or name.");return;}
-    let subjectMatches=[];
-    if(subjectCode)subjectMatches=state.subjects.filter(x=>normalizeCsvHeader(x.code)===normalizeCsvHeader(subjectCode));
-    if(!subjectMatches.length&&subjectTitle)subjectMatches=state.subjects.filter(x=>normalizeCsvHeader(x.title)===normalizeCsvHeader(subjectTitle));
-    if(subjectMatches.length!==1){issues.push("Row "+line+": subject could not be matched uniquely. Check its code or title.");return;}
     const context=currentImportContext(row);
     if(!context.section||!context.examType||!context.subExam||!context.month||!context.year){issues.push("Row "+line+": choose a complete exam context or provide valid exam section, exam type, sub-section, month, and year columns.");return;}
-    valid.push({studentId:studentMatches[0].id,subjectId:subjectMatches[0].id,grade:normalizedGrade,section:context.section,examType:context.examType,subExam:context.subExam,month:context.month,year:context.year});
+    const subjectCode=csvValue(row,"code"),subjectTitle=csvValue(row,"title"),gradeValue=csvValue(row,"grade");
+    if(subjectCode||subjectTitle||gradeValue){
+      if(!subjectCode&&!subjectTitle){issues.push("Row "+line+": add a subject code or exact subject title.");return;}
+      if(!gradeValue){issues.push("Row "+line+": grade is required.");return;}
+      let subjectMatches=[];
+      if(subjectCode)subjectMatches=state.subjects.filter(x=>normalizeCsvHeader(x.code)===normalizeCsvHeader(subjectCode));
+      if(!subjectMatches.length&&subjectTitle)subjectMatches=state.subjects.filter(x=>normalizeCsvHeader(x.title)===normalizeCsvHeader(subjectTitle));
+      if(subjectMatches.length!==1){issues.push("Row "+line+": subject could not be matched uniquely. Check its code or title.");return;}
+      const grade=gradeValue.toUpperCase().replace(/\\s+/g," "),normalizedGrade=grade==="ABSENT"?"AB":grade;
+      if(!GRADES.includes(normalizedGrade)){issues.push("Row "+line+": grade must be A, B, C, D, U, or AB/Absent.");return;}
+      valid.push({studentId:studentMatches[0].id,subjectId:subjectMatches[0].id,grade:normalizedGrade,section:context.section,examType:context.examType,subExam:context.subExam,month:context.month,year:context.year});
+      return;
+    }
+    let matchedColumns=0;
+    Object.keys(row).forEach(header=>{
+      const value=row[header];if(!value||reservedHeaders.includes(header))return;
+      const matches=state.subjects.filter(subject=>normalizeCsvHeader(subject.code)===header||normalizeCsvHeader(subject.title)===header);
+      if(matches.length>1){issues.push("Row "+line+": subject column '"+header+"' matches more than one subject.");return;}
+      if(!matches.length)return;
+      matchedColumns++;
+      const grade=String(value).toUpperCase().replace(/\\s+/g," "),normalizedGrade=grade==="ABSENT"?"AB":grade;
+      if(!GRADES.includes(normalizedGrade)){issues.push("Row "+line+", "+header+": grade must be A, B, C, D, U, or AB/Absent.");return;}
+      valid.push({studentId:studentMatches[0].id,subjectId:matches[0].id,grade:normalizedGrade,section:context.section,examType:context.examType,subExam:context.subExam,month:context.month,year:context.year});
+    });
+    if(!matchedColumns)issues.push("Row "+line+": no subject columns matched. Use subject_code/grade columns or subject codes/titles as column headers.");
   });
   return {valid,issues,total:rows.length};
 }
@@ -801,7 +817,7 @@ function renderImportPreview(data,type){
   const summary=document.getElementById("importFeedback");
   const preview=document.getElementById("importPreview");
   const apply=document.getElementById("applyImportBtn");
-  summary.textContent=data.valid.length+" of "+data.total+" rows ready to import."+(data.issues.length?" "+data.issues.length+" row(s) need correction.":"");
+  summary.textContent=type==="results"?data.valid.length+" grade(s) ready from "+data.total+" CSV row(s)."+(data.issues.length?" "+data.issues.length+" row(s) need correction.":""):data.valid.length+" of "+data.total+" rows ready to import."+(data.issues.length?" "+data.issues.length+" row(s) need correction.":"");
   let html="";
   if(data.valid.length){
     const columns=type==="students"?["name","cgmn","cin"]:type==="subjects"?["code","title"]:["studentId","subjectId","grade","section","examType","subExam","month","year"];
