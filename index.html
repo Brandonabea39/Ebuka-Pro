@@ -793,7 +793,7 @@ function buildImportRows(type,rows){
       if(subjectCode)subjectMatches=state.subjects.filter(x=>normalizeCsvHeader(x.code)===normalizeCsvHeader(subjectCode));
       if(!subjectMatches.length&&subjectTitle)subjectMatches=state.subjects.filter(x=>normalizeCsvHeader(x.title)===normalizeCsvHeader(subjectTitle));
       if(subjectMatches.length!==1){issues.push("Row "+line+": subject could not be matched uniquely. Check its code or title.");return;}
-      const grade=gradeValue.toUpperCase().replace(/\\s+/g," "),normalizedGrade=grade==="ABSENT"?"AB":grade;
+      const grade=gradeValue.toUpperCase().replace(/\s+/g," "),normalizedGrade=grade==="ABSENT"?"AB":grade;
       if(!GRADES.includes(normalizedGrade)){issues.push("Row "+line+": grade must be A, B, C, D, U, or AB/Absent.");return;}
       valid.push({studentId:studentMatches[0].id,subjectId:subjectMatches[0].id,grade:normalizedGrade,section:context.section,examType:context.examType,subExam:context.subExam,month:context.month,year:context.year});
       return;
@@ -805,7 +805,7 @@ function buildImportRows(type,rows){
       if(matches.length>1){issues.push("Row "+line+": subject column '"+header+"' matches more than one subject.");return;}
       if(!matches.length)return;
       matchedColumns++;
-      const grade=String(value).toUpperCase().replace(/\\s+/g," "),normalizedGrade=grade==="ABSENT"?"AB":grade;
+      const grade=String(value).toUpperCase().replace(/\s+/g," "),normalizedGrade=grade==="ABSENT"?"AB":grade;
       if(!GRADES.includes(normalizedGrade)){issues.push("Row "+line+", "+header+": grade must be A, B, C, D, U, or AB/Absent.");return;}
       valid.push({studentId:studentMatches[0].id,subjectId:matches[0].id,grade:normalizedGrade,section:context.section,examType:context.examType,subExam:context.subExam,month:context.month,year:context.year});
     });
