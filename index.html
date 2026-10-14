@@ -210,6 +210,7 @@ table.rc-table td.c,table.rc-table th.c{text-align:center;}
   <div class="panel" id="panel-import">
     <h2>Import school data</h2>
     <p class="sub">Upload CSV files to add or update students, subjects, and grades. Imports are saved to your school's database.</p>
+    <p class="hint">Student rows match by CIN or CGMN; subject rows match by code. Results match existing students by CIN, CGMN, or exact name, and subjects by code or exact title.</p>
     <div class="form-grid">
       <div class="field"><label for="importType">What are you importing?</label>
         <select id="importType"><option value="students">Students</option><option value="subjects">Subjects</option><option value="results">Results / grades</option></select>
