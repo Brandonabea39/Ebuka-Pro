@@ -217,7 +217,7 @@ table.rc-table td.c,table.rc-table th.c{text-align:center;}
       <div class="field"><label for="importFile">CSV file</label><input id="importFile" type="file" accept=".csv,text/csv"><span class="hint">Use a UTF-8 CSV file. Download a template to see the expected columns.</span></div>
     </div>
     <div id="resultImportContext" style="display:none;margin-top:14px;">
-      <p class="sub">Choose the exam details for this results file. The CSV can override these values using matching columns.</p>
+      <p class="sub">Choose the exam details for this results file. The CSV can override these values using matching columns. Results may use one student-subject-grade row per result, or one student per row with subject codes or titles as column headings.</p>
       <div class="form-grid">
         <div class="field"><label for="importSection">Exam section</label><select id="importSection"><option value="">Select section</option><option>ANGLOPHONE SECTION</option><option>FRANCOPHONE SECTION</option></select></div>
         <div class="field"><label for="importExamType">Exam type</label><select id="importExamType" disabled><option value="">Select exam type</option></select></div>
@@ -701,7 +701,7 @@ function parseCsvRows(text){
   });
 }
 const CSV_ALIASES={
-  name:["name","full name","student name","candidate name"],
+  name:["name","full name","student name","student full name","candidate name"],
   cgmn:["cgmn","student cgmn","candidate number","candidate registration number"],
   cin:["cin","student cin","candidate identification number","identification number"],
   dob:["dob","date of birth","birth date"],
@@ -769,11 +769,16 @@ function buildImportRows(type,rows){
     if(type==="students"){
       const name=csvValue(row,"name");
       if(!name){issues.push("Row "+line+": student name is required.");return;}
-      valid.push({name:name,cgmn:csvValue(row,"cgmn"),cin:csvValue(row,"cin"),dob:csvValue(row,"dob"),pob:csvValue(row,"pob"),fatherName:csvValue(row,"fatherName"),fatherPhone:csvValue(row,"fatherPhone"),motherName:csvValue(row,"motherName"),motherPhone:csvValue(row,"motherPhone")});return;
+      const cin=csvValue(row,"cin"),cgmn=csvValue(row,"cgmn");
+      const byCin=cin?state.students.filter(x=>normalizeCsvHeader(x.cin)===normalizeCsvHeader(cin)):[];
+      const byCgmn=cgmn?state.students.filter(x=>normalizeCsvHeader(x.cgmn)===normalizeCsvHeader(cgmn)):[];
+      if(byCin.length>1||byCgmn.length>1||(byCin.length&&byCgmn.length&&byCin[0].id!==byCgmn[0].id)){issues.push("Row "+line+": CIN and CGMN must identify one unique existing student.");return;}
+      valid.push({name:name,cgmn:cgmn,cin:cin,dob:csvValue(row,"dob"),pob:csvValue(row,"pob"),fatherName:csvValue(row,"fatherName"),fatherPhone:csvValue(row,"fatherPhone"),motherName:csvValue(row,"motherName"),motherPhone:csvValue(row,"motherPhone")});return;
     }
     if(type==="subjects"){
       const code=csvValue(row,"code"),title=csvValue(row,"title");
       if(!code||!title){issues.push("Row "+line+": subject code and subject title are required.");return;}
+      if(state.subjects.filter(x=>normalizeCsvHeader(x.code)===normalizeCsvHeader(code)).length>1){issues.push("Row "+line+": this subject code matches multiple existing subjects.");return;}
       valid.push({code:code,title:title});return;
     }
     const cin=csvValue(row,"studentCin"),cgmn=csvValue(row,"studentCgmn"),name=csvValue(row,"studentName");
@@ -957,6 +962,9 @@ gStudent.addEventListener("change",()=>{
   document.getElementById("wrap_grades").style.display="none";document.getElementById("reportPreviewWrap").style.display="none";pill(5,false);
   if(!v)return;renderGradesTable(v);document.getElementById("wrap_grades").style.display="block";
 });
+["g_month","g_year"].forEach(id=>document.getElementById(id).addEventListener("change",()=>{
+  if(gStudent.value)renderGradesTable(gStudent.value);
+}));
 function currentReportContext(){
   return {section:gSection.value,examType:gExamType.value,subExam:gSubExam.value,month:document.getElementById("g_month").value,year:document.getElementById("g_year").value};
 }
