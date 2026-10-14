@@ -250,13 +250,15 @@ table.rc-table td.c,table.rc-table th.c{text-align:center;}
       <div id="wrap_grades" style="display:none;">
         <div id="gradesTableWrap"></div>
         <div class="btn-row">
-          <button class="btn btn-gold" id="generateBtn" disabled>Generate &amp; Download PDF</button>
+          <button class="btn btn-gold" id="generateBtn" disabled>Preview Report Card</button>
         </div>
       </div>
     </div>
     <div id="reportPreviewWrap">
-      <h3>Preview</h3>
+      <h3>Report card preview</h3>
+      <p class="sub">Check the details and layout below. Download the PDF only after you have reviewed this preview.</p>
       <div class="report-shell"><div class="report-card" id="reportCard"></div></div>
+      <div class="btn-row"><button class="btn btn-primary" id="downloadBtn" type="button">Download PDF</button></div>
     </div>
   </div>
 </div>
@@ -300,8 +302,8 @@ table.rc-table td.c,table.rc-table th.c{text-align:center;}
 <div class="overlay" id="successOverlay">
   <div class="mbox" style="text-align:center;">
     <div class="success-icon">✓</div>
-    <h3 style="text-align:center;">Report card generated!</h3>
-    <p style="color:var(--ink-soft);font-size:13px;margin:6px 0 16px;">The PDF has been downloaded to your device.</p>
+    <h3 style="text-align:center;">PDF downloaded</h3>
+    <p style="color:var(--ink-soft);font-size:13px;margin:6px 0 16px;">Your report card PDF has been saved to your device.</p>
     <button class="btn btn-primary" id="successOkBtn">Done</button>
   </div>
 </div>
@@ -708,11 +710,28 @@ logoHtml+
 '<div class="rc-copyright">&copy; '+esc(ba)+' EXAMINATION BOARD '+esc(year)+'</div>'+
 '<div class="rc-parentsig">PARENT NAME AND SIGNATURE:<div class="rc-sigline"></div></div></div>';
 }
-document.getElementById("generateBtn").addEventListener("click",async()=>{
-  const stuId=gStudent.value;const stu=state.students.find(x=>x.id===stuId);if(!stu)return;
-  const rc=document.getElementById("reportCard");rc.innerHTML=buildRC();
-  document.getElementById("reportPreviewWrap").style.display="block";pill(5,true);
-  const btn=document.getElementById("generateBtn");btn.disabled=true;btn.textContent="Generating…";
+function invalidateReportPreview(){
+  document.getElementById("reportPreviewWrap").style.display="none";
+}
+document.addEventListener("change",e=>{
+  if(["g_section","g_examType","g_subExam","g_student","g_month","g_year"].includes(e.target.id)||e.target.matches("[data-gfor]")){
+    invalidateReportPreview();
+  }
+});
+document.getElementById("generateBtn").addEventListener("click",()=>{
+  const stuId=gStudent.value;const stu=state.students.find(x=>x.id===stuId);
+  if(!stu||document.getElementById("generateBtn").disabled)return;
+  document.getElementById("reportCard").innerHTML=buildRC();
+  document.getElementById("reportPreviewWrap").style.display="block";
+  pill(5,true);
+  document.getElementById("reportPreviewWrap").scrollIntoView({behavior:"smooth",block:"start"});
+});
+document.getElementById("downloadBtn").addEventListener("click",async()=>{
+  const stu=state.students.find(x=>x.id===gStudent.value);
+  const rc=document.getElementById("reportCard");
+  if(!stu||document.getElementById("reportPreviewWrap").style.display==="none")return;
+  const btn=document.getElementById("downloadBtn");
+  btn.disabled=true;btn.textContent="Preparing PDF…";
   try{
     const canvas=await html2canvas(rc,{scale:2,useCORS:true,backgroundColor:"#ffffff"});
     const imgData=canvas.toDataURL("image/png");const{jsPDF}=window.jspdf;
@@ -721,7 +740,7 @@ document.getElementById("generateBtn").addEventListener("click",async()=>{
     pdf.save(stu.name.replace(/[^a-z0-9]+/gi,"_")+"_ReportCard.pdf");
     document.getElementById("successOverlay").classList.add("show");
   }catch(e){console.error(e);alert("Something went wrong generating the PDF. Please try again.");}
-  finally{btn.disabled=false;btn.textContent="Generate & Download PDF";checkGrades();}
+  finally{btn.disabled=false;btn.textContent="Download PDF";}
 });
 document.getElementById("successOkBtn").addEventListener("click",()=>document.getElementById("successOverlay").classList.remove("show"));
 ["studentOverlay","subjectOverlay"].forEach(id=>{
