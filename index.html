@@ -96,8 +96,8 @@ table.dt tr:last-child td{border-bottom:none;}
 .report-card{width:720px;min-height:1018px;margin:0 auto;background:#fff;color:#111;font-family:Arial,Helvetica,sans-serif;padding:38px 50px 34px;border:0;overflow:hidden;position:relative;}
 .rc-background{position:absolute;inset:0;background-position:center;background-size:100% 100%;background-repeat:no-repeat;z-index:0;pointer-events:none;}
 .rc-watermark{position:absolute;left:50%;top:49%;width:54%;height:47%;transform:translate(-50%,-50%);object-fit:contain;opacity:.12;mix-blend-mode:multiply;z-index:1;pointer-events:none;}
-.rc-frame{position:absolute;inset:0 auto 0 -2.7%;width:102.7%;height:100%;object-fit:fill;z-index:3;pointer-events:none;}
-.rc-content{position:relative;z-index:2;min-height:940px;display:flex;flex-direction:column;}
+.rc-frame{position:absolute;left:-2.7%;right:auto;top:-1.4%;bottom:auto;width:102.7%;height:101.4%;object-fit:fill;z-index:3;pointer-events:none;}
+.rc-content{position:relative;z-index:4;min-height:940px;display:flex;flex-direction:column;}
 .rc-header{display:grid;grid-template-columns:1fr 106px 1fr;align-items:center;gap:12px;}
 .rc-col{text-align:center;font-size:10px;line-height:1.3;}
 .rc-col .rc-school-name{font-weight:700;font-size:10px;text-transform:uppercase;border-bottom:1px solid #222;padding-bottom:2px;margin:0 auto 3px;}
@@ -121,7 +121,9 @@ table.rc-table th{background:transparent;text-align:left;text-transform:uppercas
 table.rc-table td.c,table.rc-table th.c{text-align:center;}
 .rc-legend{margin-top:10px;font-size:9px;text-align:center;font-weight:700;}
 .rc-disclaimer{margin-top:16px;text-align:center;font-size:10px;line-height:1.7;}
-.rc-footerschool{margin-top:8px;text-align:center;font-weight:700;font-size:9px;text-transform:uppercase;}
+.rc-barcode-wrap{height:30px;margin:8px auto 0;text-align:center;line-height:1;}
+.rc-barcode{display:block;width:min(310px,78%);height:28px;margin:0 auto;shape-rendering:crispEdges;}
+.rc-footerschool{margin-top:1px;text-align:center;font-weight:700;font-size:5.5px;letter-spacing:.45px;text-transform:uppercase;}
 .rc-sigrow{display:flex;justify-content:space-between;align-items:flex-end;margin-top:20px;font-size:12px;font-weight:700;}
 .rc-sigrow span{font-family:"UnifrakturCook","Old English Text MT",serif;font-weight:700;line-height:1;white-space:nowrap;}
 .rc-sigrow span:first-child{font-size:26px;}
@@ -997,6 +999,29 @@ function checkGrades(){
   const sels=document.querySelectorAll("[data-gfor]");
   document.getElementById("generateBtn").disabled=sels.length===0||!Array.from(sels).every(s=>s.value!=="");
 }
+function buildCode39Barcode(value){
+  const patterns={
+    "0":"000110100","1":"100100001","2":"001100001","3":"101100000","4":"000110001","5":"100110000","6":"001110000","7":"000100101","8":"100100100","9":"001100100",
+    "A":"100001001","B":"001001001","C":"101001000","D":"000011001","E":"100011000","F":"001011000","G":"000001101","H":"100001100","I":"001001100","J":"000011100",
+    "K":"100000011","L":"001000011","M":"101000010","N":"000010011","O":"100010010","P":"001010010","Q":"000000111","R":"100000110","S":"001000110","T":"000010110",
+    "U":"110000001","V":"011000001","W":"111000000","X":"010010001","Y":"110010000","Z":"011010000",
+    "-":"010000101",".":"110000100"," ":"011000100","$":"010101000","/":"010100010","+":"010001010","%":"000101010","*":"010010100"
+  };
+  const clean=String(value||"STUDENT").toUpperCase().replace(/[^A-Z0-9 ./$+%-]/g,"")||"STUDENT";
+  const encoded="*"+clean+"*";const moduleWidth=1.5,height=24,quiet=12;
+  let x=quiet,bars="";
+  Array.from(encoded).forEach((character,index)=>{
+    const pattern=patterns[character];
+    for(let i=0;i<9;i++){
+      const width=pattern[i]==="1"?moduleWidth*3:moduleWidth;
+      if(i%2===0)bars+='<rect x="'+x.toFixed(2)+'" y="0" width="'+width.toFixed(2)+'" height="'+height+'"/>';
+      x+=width;
+    }
+    if(index<encoded.length-1)x+=moduleWidth;
+  });
+  const width=x+quiet;
+  return '<svg class="rc-barcode" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 '+width.toFixed(2)+' '+height+'" role="img" aria-label="Code 39 barcode for '+esc(clean)+'"><g fill="#111">'+bars+'</g></svg>';
+}
 function buildRC(){
   const s=state.settings;const stuId=gStudent.value;const stu=state.students.find(x=>x.id===stuId);
   const subIds=state.registrations[stuId]||[];const month=document.getElementById("g_month").value;const year=document.getElementById("g_year").value;
@@ -1007,6 +1032,7 @@ function buildRC(){
   const watermarkHtml=s.logo?'<img class="rc-watermark" src="'+esc(s.logo)+'" alt="">':"";
   const sn=s.schoolName||"YOUR SCHOOL NAME";const ba=s.boardAbbrev||"E.B";
   const tableRows=rows.map(r=>'<tr><td class="c">'+esc(r.code)+'</td><td>'+esc(r.title)+'</td><td class="c">'+esc(r.grade)+'</td><td class="c">'+esc(r.remark)+'</td></tr>').join("");
+  const barcodeHtml=buildCode39Barcode(stu.cin||stu.cgmn||stu.id);
   return '<div class="rc-background" style="background-image:url(&quot;'+REPORT_CARD_BACKGROUND+'&quot;)"></div>'+watermarkHtml+
 '<img class="rc-frame" src="'+REPORT_CARD_FRAME+'" alt=""><div class="rc-content">'+
 '<div class="rc-header">'+
@@ -1022,7 +1048,7 @@ logoHtml+
 '<table class="rc-table"><thead><tr><th class="c">CODE</th><th>SUBJECT NAME</th><th class="c">GRADE</th><th class="c">REMARKS</th></tr></thead><tbody>'+tableRows+'</tbody></table>'+
 '<div class="rc-legend">GRADING FORMAT: &nbsp; A : 76–100 &nbsp; B : 60–75 &nbsp; C : 50–59 &nbsp; D : 35–49 &nbsp; U : &lt; 35 &nbsp; AB : ABSENT</div>'+
 '<div class="rc-disclaimer"><div>THIS IS A RESULT SLIP AND NOT A CERTIFICATE.</div><div>NO ALTERATIONS SHOULD BE MADE ON THIS SLIP.</div></div>'+
-'<div class="rc-footerschool">'+esc(sn)+'</div><div class="rc-sigrow"><span>THE PRINCIPAL.</span><span>'+esc(ba)+'</span></div>'+
+'<div class="rc-barcode-wrap">'+barcodeHtml+'</div><div class="rc-footerschool">'+esc(sn)+'</div><div class="rc-sigrow"><span>THE PRINCIPAL.</span><span>'+esc(ba)+'</span></div>'+
 '<div class="rc-copyright">&copy; '+esc(ba)+' EXAMINATION BOARD '+esc(year)+'</div>'+
 '<div class="rc-parentsig">PARENT NAME AND SIGNATURE:<div class="rc-sigline"></div></div></div>';
 }
