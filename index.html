@@ -305,6 +305,8 @@ table.rc-table td.c,table.rc-table th.c{text-align:center;}
       <div class="field full"><label>Full Name</label><input id="f_name" placeholder="e.g. ATANGA NOELLA PETRA"></div>
       <div class="field"><label>CGMN</label><input id="f_cgmn" placeholder="e.g. 242467242"></div>
       <div class="field"><label>CIN</label><input id="f_cin" placeholder="e.g. 120225004"></div>
+      <div class="field"><label>Class / Series</label><input id="f_classSeries" placeholder="e.g. Form 5, O-Level, A-Level"></div>
+      <div class="field"><label>Stream (Arts / Science)</label><input id="f_stream" placeholder="e.g. Arts or Science"></div>
       <div class="field"><label>Date of Birth</label><input id="f_dob" placeholder="e.g. 12/03/2008"></div>
       <div class="field"><label>Place of Birth</label><input id="f_pob" placeholder="e.g. Yaoundé"></div>
       <div class="field"><label>Father's Name</label><input id="f_fatherName" placeholder="Full name"></div>
@@ -579,9 +581,9 @@ let editStudId=null;
 function renderStudents(){
   const w=document.getElementById("studentsTableWrap");
   if(!state.students.length){w.innerHTML='<div class="empty"><b>No students yet</b>Click "Add student" to register your first student.</div>';return;}
-  let h='<table class="dt"><thead><tr><th>Name</th><th>CGMN</th><th>CIN</th><th>DOB</th><th>Actions</th></tr></thead><tbody>';
+  let h='<table class="dt"><thead><tr><th>Name</th><th>CGMN</th><th>CIN</th><th>Class / Series</th><th>Stream</th><th>DOB</th><th>Actions</th></tr></thead><tbody>';
   state.students.forEach(s=>{
-    h+=`<tr><td>${esc(s.name)}</td><td>${esc(s.cgmn)}</td><td>${esc(s.cin)}</td><td>${esc(s.dob)}</td>
+    h+=`<tr><td>${esc(s.name)}</td><td>${esc(s.cgmn)}</td><td>${esc(s.cin)}</td><td>${esc(s.classSeries)}</td><td>${esc(s.stream)}</td><td>${esc(s.dob)}</td>
     <td class="ra"><button class="btn btn-outline" onclick="editStud('${s.id}')">Edit</button><button class="btn btn-danger" onclick="delStud('${s.id}')">Delete</button></td></tr>`;
   });
   h+="</tbody></table>";w.innerHTML=h;
@@ -595,7 +597,7 @@ window.delStud=async id=>{
 function openStudModal(id){
   editStudId=id||null;
   document.getElementById("studentModalTitle").textContent=id?"Edit student":"Add student";
-  const flds=["name","cgmn","cin","dob","pob","fatherName","fatherPhone","motherName","motherPhone"];
+  const flds=["name","cgmn","cin","classSeries","stream","dob","pob","fatherName","fatherPhone","motherName","motherPhone"];
   if(id){const s=state.students.find(x=>x.id===id);flds.forEach(f=>document.getElementById("f_"+f).value=s[f]||"");}
   else{flds.forEach(f=>document.getElementById("f_"+f).value="");}
   document.getElementById("studentOverlay").classList.add("show");
@@ -605,7 +607,7 @@ document.getElementById("studentCancelBtn").addEventListener("click",()=>documen
 document.getElementById("studentSaveBtn").addEventListener("click",async()=>{
   const name=document.getElementById("f_name").value.trim();
   if(!name){alert("Please enter the student's full name.");return;}
-  const data={name,cgmn:document.getElementById("f_cgmn").value.trim(),cin:document.getElementById("f_cin").value.trim(),dob:document.getElementById("f_dob").value.trim(),pob:document.getElementById("f_pob").value.trim(),fatherName:document.getElementById("f_fatherName").value.trim(),fatherPhone:document.getElementById("f_fatherPhone").value.trim(),motherName:document.getElementById("f_motherName").value.trim(),motherPhone:document.getElementById("f_motherPhone").value.trim()};
+  const data={name,cgmn:document.getElementById("f_cgmn").value.trim(),cin:document.getElementById("f_cin").value.trim(),classSeries:document.getElementById("f_classSeries").value.trim(),stream:document.getElementById("f_stream").value.trim(),dob:document.getElementById("f_dob").value.trim(),pob:document.getElementById("f_pob").value.trim(),fatherName:document.getElementById("f_fatherName").value.trim(),fatherPhone:document.getElementById("f_fatherPhone").value.trim(),motherName:document.getElementById("f_motherName").value.trim(),motherPhone:document.getElementById("f_motherPhone").value.trim()};
   if(editStudId){const i=state.students.findIndex(s=>s.id===editStudId);state.students[i]=Object.assign({id:editStudId},data);}
   else{state.students.push(Object.assign({id:uid("stu")},data));}
   document.getElementById("studentOverlay").classList.remove("show");
@@ -707,6 +709,8 @@ function parseCsvRows(text){
 }
 const CSV_ALIASES={
   name:["name","full name","student name","students name","student full name","candidate name","name of student","name of candidate","candidate full name"],
+  classSeries:["class series","class","series","level","class level"],
+  stream:["stream arts science","stream","arts science"],
   cgmn:["cgmn","student cgmn","candidate cgmn","candidate government matricule number cgmn","candidate government matricule number","candidate number","candidate registration number"],
   cin:["cin","cni","student cin","student cni","candidate cin","candidate cni","candidate identification number cin","candidate identification number","identification number","national identity number","carte nationale d identite"],
   dob:["dob","date of birth","birth date"],
@@ -789,7 +793,7 @@ function buildImportRows(type,rows){
       const byCin=cin?state.students.filter(x=>normalizeCsvHeader(x.cin)===normalizeCsvHeader(cin)):[];
       const byCgmn=cgmn?state.students.filter(x=>normalizeCsvHeader(x.cgmn)===normalizeCsvHeader(cgmn)):[];
       if(byCin.length>1||byCgmn.length>1||(byCin.length&&byCgmn.length&&byCin[0].id!==byCgmn[0].id)){issues.push("Row "+line+": CIN and CGMN must identify one unique existing student.");return;}
-      valid.push({name:name,cgmn:cgmn,cin:cin,dob:csvValue(row,"dob"),pob:csvValue(row,"pob"),fatherName:csvValue(row,"fatherName"),fatherPhone:csvValue(row,"fatherPhone"),motherName:csvValue(row,"motherName"),motherPhone:csvValue(row,"motherPhone")});return;
+      valid.push({name:name,cgmn:cgmn,cin:cin,classSeries:csvValue(row,"classSeries"),stream:csvValue(row,"stream"),dob:csvValue(row,"dob"),pob:csvValue(row,"pob"),fatherPhone:csvValue(row,"fatherPhone"),motherName:csvValue(row,"motherName"),motherPhone:csvValue(row,"motherPhone")});return;
     }
     if(type==="subjects"){
       const code=csvValue(row,"code"),title=csvValue(row,"title");
@@ -847,7 +851,7 @@ function renderImportPreview(data,type){
   summary.textContent=type==="results"?data.valid.length+" grade(s) ready from "+data.total+" CSV row(s)."+(data.issues.length?" "+data.issues.length+" row(s) need correction.":""):data.valid.length+" of "+data.total+" rows ready to import."+(data.issues.length?" "+data.issues.length+" row(s) need correction.":"");
   let html="";
   if(data.valid.length){
-    const columns=type==="students"?["name","cgmn","cin"]:type==="subjects"?["code","title"]:["studentId","subjectId","grade","section","examType","subExam","month","year"];
+    const columns=type==="students"?["name","cgmn","cin","classSeries","stream"]:type==="subjects"?["code","title"]:["studentId","subjectId","grade","section","examType","subExam","month","year"];
     html+='<table class="dt"><thead><tr>'+columns.map(c=>'<th>'+esc(c==="studentId"?"Student":c==="subjectId"?"Subject":c)+'</th>').join("")+'</tr></thead><tbody>';
     data.valid.slice(0,5).forEach(item=>{
       const cells=columns.map(c=>{
@@ -929,7 +933,7 @@ async function applyCsvImport(){
 function downloadCsvTemplate(){
   const type=document.getElementById("importType").value;
   const templates={
-    students:"name,cgmn,cin,dob,pob,fatherName,fatherPhone,motherName,motherPhone\r\nATANGA NOELLA PETRA,242467242,120225004,12/03/2008,Yaounde,,,,\r\n",
+    students:"name,cgmn,cin,class_series,stream,dob,pob,fatherName,fatherPhone,motherName,motherPhone\\r\\nATANGA NOELLA PETRA,242467242,120225004,Form 5,Science,12/03/2008,Yaounde,,,,\\r\\n",
     subjects:"code,title\r\n0535,ENGLISH LANGUAGE\r\n",
     results:"student_cin,student_cgmn,student_name,subject_code,subject_title,grade\r\n120225004,242467242,ATANGA NOELLA PETRA,0535,ENGLISH LANGUAGE,A\r\n"
   };
