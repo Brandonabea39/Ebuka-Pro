@@ -212,7 +212,7 @@ table.rc-table td.c,table.rc-table th.c{text-align:center;}
   <div class="panel" id="panel-import">
     <h2>Import school data</h2>
     <p class="sub">Upload CSV files to add or update students, subjects, and grades. Imports are saved to your school's database.</p>
-    <p class="hint">Student rows match by CIN or CGMN; subject rows match by code. Results match existing students by CIN, CGMN, or exact name, and subjects by code or exact title.</p>
+    <p class="hint">Student rows match by CIN, CNI, CGMN, or name; subject rows match by code. Results match existing students by CIN, CNI, CGMN, or exact name, and subjects by code or exact title.</p>
     <div class="form-grid">
       <div class="field"><label for="importType">What are you importing?</label>
         <select id="importType"><option value="students">Students</option><option value="subjects">Subjects</option><option value="results">Results / grades</option></select>
@@ -700,13 +700,15 @@ function parseCsvRows(text){
   return rows.map(cells=>{
     const item={};
     headers.forEach((header,index)=>{if(header)item[header]=cells[index]||"";});
+    Object.defineProperty(item,"__csvCells",{value:cells,enumerable:false});
+    Object.defineProperty(item,"__csvHeaders",{value:headers,enumerable:false});
     return item;
   });
 }
 const CSV_ALIASES={
-  name:["name","full name","student name","student full name","candidate name"],
+  name:["name","full name","student name","students name","student full name","candidate name","name of student","name of candidate","candidate full name"],
   cgmn:["cgmn","student cgmn","candidate number","candidate registration number"],
-  cin:["cin","student cin","candidate identification number","identification number"],
+  cin:["cin","cni","student cin","student cni","candidate cin","candidate cni","candidate identification number","identification number","national identity number","carte nationale d identite"],
   dob:["dob","date of birth","birth date"],
   pob:["pob","place of birth","birth place"],
   fatherName:["father name","father s name","fathers name"],
@@ -715,8 +717,8 @@ const CSV_ALIASES={
   motherPhone:["mother phone","mother s phone","mothers phone"],
   code:["subject code","code"],
   title:["subject title","subject name","title","subject"],
-  studentName:["student name","candidate name","full name","name","student"],
-  studentCin:["student cin","cin","candidate identification number"],
+  studentName:["student name","students name","candidate name","full name","name of student","name of candidate","student full name","candidate full name","name","student"],
+  studentCin:["student cin","student cni","cin","cni","candidate cin","candidate cni","candidate identification number","national identity number"],
   studentCgmn:["student cgmn","cgmn","candidate number"],
   grade:["grade","mark","result"],
   section:["exam section","section"],
@@ -807,17 +809,22 @@ function buildImportRows(type,rows){
       return;
     }
     let matchedColumns=0;
-    Object.keys(row).forEach(header=>{
-      const value=row[header];if(!value||reservedHeaders.includes(header))return;
+    const headers=row.__csvHeaders||Object.keys(row);
+    const cells=row.__csvCells||[];
+    headers.forEach((header,columnIndex)=>{
+      if(!header||reservedHeaders.includes(header)||!cells[columnIndex])return;
       const matches=state.subjects.filter(subject=>normalizeCsvHeader(subject.code)===header||normalizeCsvHeader(subject.title)===header);
       if(matches.length>1){issues.push("Row "+line+": subject column '"+header+"' matches more than one subject.");return;}
       if(!matches.length)return;
       matchedColumns++;
-      const grade=String(value).toUpperCase().replace(/\s+/g," "),normalizedGrade=grade==="ABSENT"?"AB":grade;
-      if(!GRADES.includes(normalizedGrade)){issues.push("Row "+line+", "+header+": grade must be A, B, C, D, U, or AB/Absent.");return;}
+      const nextHeader=headers[columnIndex+1]||"";
+      const rawGrade=normalizeCsvHeader(nextHeader)==="grade"?(cells[columnIndex+1]||""):cells[columnIndex];
+      if(!rawGrade)return;
+      const grade=String(rawGrade).toUpperCase().replace(/\s+/g," "),normalizedGrade=grade==="ABSENT"?"AB":grade;
+      if(!GRADES.includes(normalizedGrade)){issues.push("Row "+line+", "+header+": grade must be A, B, C, D, or U/AB/Absent.");return;}
       valid.push({studentId:studentMatches[0].id,subjectId:matches[0].id,grade:normalizedGrade,section:context.section,examType:context.examType,subExam:context.subExam,month:context.month,year:context.year});
     });
-    if(!matchedColumns)issues.push("Row "+line+": no subject columns matched. Use subject_code/grade columns or subject codes/titles as column headers.");
+    if(!matchedColumns)issues.push("Row "+line+": no subject columns matched. Use subject_code/grade columns or subject codes/titles as column headings.");
   });
   return {valid,issues,total:rows.length};
 }
