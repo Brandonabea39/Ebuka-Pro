@@ -888,11 +888,14 @@ async function prepareCsvImport(file){
 function mergeStudentImport(data){
   const byCin=data.cin?state.students.filter(x=>normalizeCsvHeader(x.cin)===normalizeCsvHeader(data.cin)):[];
   const byCgmn=data.cgmn?state.students.filter(x=>normalizeCsvHeader(x.cgmn)===normalizeCsvHeader(data.cgmn)):[];
-  const byName=!data.cin&&!data.cgmn&&data.name?state.students.filter(x=>normalizeCsvHeader(x.name)===normalizeCsvHeader(data.name)):[];
-  if(byCin.length>1||byCgmn.length>1||byName.length>1)throw new Error("A student CIN, CGMN, or name matches more than one existing record.");
+  const byName=data.name?state.students.filter(x=>normalizeCsvHeader(x.name)===normalizeCsvHeader(data.name)):[];
+  if(byCin.length>1||byCgmn.length>1)throw new Error("A student CIN or CGMN matches more than one existing record.");
   const cinMatch=byCin[0]||null,cgmnMatch=byCgmn[0]||null;
   if(cinMatch&&cgmnMatch&&cinMatch.id!==cgmnMatch.id)throw new Error("A student CIN and CGMN in the same row match different records.");
-  const existing=cinMatch||cgmnMatch||byName[0]||null;
+  const idMatch=cinMatch||cgmnMatch;
+  if(idMatch&&byName.length&&byName[0].id!==idMatch.id)throw new Error("The student's name and identification numbers point to different existing records.");
+  if(!idMatch&&byName.length>1)throw new Error("This exact student name matches more than one existing record; add a unique CIN or CGMN before importing.");
+  const existing=idMatch||byName[0]||null;
   if(existing)Object.keys(data).forEach(key=>{if(data[key])existing[key]=data[key];});
   else state.students.push(Object.assign({id:uid("stu")},data));
 }
