@@ -736,6 +736,17 @@ function canonicalOption(value,options){
   const key=normalizeCsvHeader(value);
   return options.find(option=>normalizeCsvHeader(option)===key)||"";
 }
+function csvSubjectHeaderKeys(header){
+  const aliases={
+    "fre":["french"],"math":["mathematics"],"bio":["biology"],"chem":["chemistry"],"phy":["physics"],
+    "a math":["additional mathematics","additional maths"],"f math":["further mathematics","further maths"],
+    "cit":["citizenship education"],"econs":["economics"],"comm":["commerce"],"gegy":["geography"],
+    "eng":["english language","english"],"lit":["literature in english","literature"],"hist":["history"],
+    "geo":["geography"],"csc":["computer science"],"rel":["religious studies","religion"],
+    "h bio":["human biology"],"ict":["information and communication technology","ict"]
+  };
+  return [header].concat(aliases[header]||[]).map(normalizeCsvHeader);
+}
 let pendingCsvImport=null;
 function importOptionsForType(){
   const type=document.getElementById("importType").value;
@@ -813,7 +824,8 @@ function buildImportRows(type,rows){
     const cells=row.__csvCells||[];
     headers.forEach((header,columnIndex)=>{
       if(!header||reservedHeaders.includes(header)||!cells[columnIndex])return;
-      const matches=state.subjects.filter(subject=>normalizeCsvHeader(subject.code)===header||normalizeCsvHeader(subject.title)===header);
+      const subjectKeys=csvSubjectHeaderKeys(header);
+      const matches=state.subjects.filter(subject=>subjectKeys.includes(normalizeCsvHeader(subject.code))||subjectKeys.includes(normalizeCsvHeader(subject.title)));
       if(matches.length>1){issues.push("Row "+line+": subject column '"+header+"' matches more than one subject.");return;}
       if(!matches.length)return;
       matchedColumns++;
@@ -872,10 +884,11 @@ async function prepareCsvImport(file){
 function mergeStudentImport(data){
   const byCin=data.cin?state.students.filter(x=>normalizeCsvHeader(x.cin)===normalizeCsvHeader(data.cin)):[];
   const byCgmn=data.cgmn?state.students.filter(x=>normalizeCsvHeader(x.cgmn)===normalizeCsvHeader(data.cgmn)):[];
-  if(byCin.length>1||byCgmn.length>1)throw new Error("A student CIN or CGMN matches more than one existing record.");
+  const byName=!data.cin&&!data.cgmn&&data.name?state.students.filter(x=>normalizeCsvHeader(x.name)===normalizeCsvHeader(data.name)):[];
+  if(byCin.length>1||byCgmn.length>1||byName.length>1)throw new Error("A student CIN, CGMN, or name matches more than one existing record.");
   const cinMatch=byCin[0]||null,cgmnMatch=byCgmn[0]||null;
   if(cinMatch&&cgmnMatch&&cinMatch.id!==cgmnMatch.id)throw new Error("A student CIN and CGMN in the same row match different records.");
-  const existing=cinMatch||cgmnMatch;
+  const existing=cinMatch||cgmnMatch||byName[0]||null;
   if(existing)Object.keys(data).forEach(key=>{if(data[key])existing[key]=data[key];});
   else state.students.push(Object.assign({id:uid("stu")},data));
 }
